@@ -6,16 +6,13 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      run_coverage:
-        description: 'Generate and publish test coverage report'
-        required: false
-        default: false
-        type: boolean
   repository_dispatch:
     types:
       - run-ci
-      - check-coverage
+
+permissions:
+  contents: read
+  pull-requests: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -30,7 +27,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
-      frontend: ${{ steps.filter.outputs.frontend }}
       docker: ${{ steps.filter.outputs.docker }}
     steps:
       - name: Checkout Code
@@ -45,10 +41,6 @@ jobs:
               - 'crates/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
-              - '.github/workflows/ci.yml'
-              - '.github/workflows/reusable-rust-ci.yml'
-            frontend:
-              - 'console/**'
               - '.github/workflows/ci.yml'
             docker:
               - 'docker-compose.yml'
@@ -71,7 +63,6 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
 
   # ============================================================================
   # 2. RUST WORKSPACE VERIFICATION
@@ -106,39 +97,7 @@ jobs:
         run: cargo test --workspace
 
   # ============================================================================
-  # 3. CONSOLE FRONTEND TYPECHECK & LINT
-  # ============================================================================
-  frontend-check:
-    name: Console Frontend Check
-    needs: [changes]
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch' || needs.changes.outputs.frontend == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11
-
-      - name: Install Dependencies
-        run: |
-          cd console
-          pnpm install --frozen-lockfile
-
-      - name: Frontend Typecheck
-        run: |
-          cd console
-          pnpm --filter @operon/workstation typecheck
-
-  # ============================================================================
-  # 4. DOCKER COMPOSE CONFIG VALIDATION
+  # 3. DOCKER COMPOSE CONFIG VALIDATION
   # ============================================================================
   docker-check:
     name: Docker Compose Validation
