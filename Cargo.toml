@@ -4,7 +4,7 @@ members = [
     "crates/worker",
     "crates/browser",
 ]
-exclude = [
-    "console/apps/workstation/src-tauri",
-]
 resolver = "2"
+
+[workspace.metadata.ci]
+rust-toolchain = "1.99.1"
