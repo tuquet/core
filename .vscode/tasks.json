@@ -2,10 +2,10 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "local: <cli> dev",
+      "label": "local: <daemon> start",
       "type": "shell",
       "command": "cargo",
-      "args": ["run", "--bin", "opn"],
+      "args": ["run", "--bin", "opn", "--", "worker", "start", "-H", "127.0.0.1", "-p", "8765"],
       "isBackground": true,
       "group": {
         "kind": "build",
@@ -19,10 +19,122 @@
       "problemMatcher": []
     },
     {
+      "label": "local: <daemon> status",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["run", "--bin", "opn", "--", "worker", "status"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "local: <daemon> stop",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["run", "--bin", "opn", "--", "worker", "stop"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "local: <cli> dev",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["run", "--bin", "opn"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "local: <cli> env:check",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["run", "--bin", "opn", "--", "env", "--check"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "local: <cli> install",
       "type": "shell",
       "command": "cargo",
       "args": ["install", "--path", "crates/cli", "--bin", "opn", "--debug", "--force", "--root", "${userHome}/.operon"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "local: <workspace> check",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["check", "--workspace", "--all-targets"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "local: <workspace> clippy",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["clippy", "--workspace", "--all-targets"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "local: <workspace> fmt:check",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["fmt", "--all", "--", "--check"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "local: <workspace> fmt",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["fmt", "--all"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "local: <workspace> test",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["test", "--workspace"],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
       "presentation": {
         "reveal": "always",
         "panel": "shared",
@@ -47,16 +159,51 @@
       "type": "shell",
       "command": "cargo",
       "args": ["test", "-p", "operon"],
-      "group": {
-        "kind": "test",
-        "isDefault": true
-      },
+      "group": "test",
       "presentation": {
         "reveal": "always",
         "panel": "shared",
         "clear": true
       },
       "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "local: <worker> test",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["test", "-p", "worker"],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "local: <browser> test",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["test", "-p", "browser"],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "local: <workspace> clean",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["clean"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
     }
   ]
 }

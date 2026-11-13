@@ -255,6 +255,8 @@ pub fn create_router(state: crate::AppState) -> Router {
                         || host == "operon.operon.dev"
                         || host == "operon.com"
                         || host.ends_with(".operon.dev")
+                        || host == "tuquet.com"
+                        || host.ends_with(".tuquet.com")
                         || s_trimmed == "https://automation-studio.vercel.app"
                         || s_trimmed == "https://operon.github.io"
                 } else {
@@ -336,6 +338,8 @@ mod tests {
             "https://app.operon.dev",
             "https://console.operon.dev",
             "http://console.operon.dev",
+            "https://console.tuquet.com",
+            "https://tuquet.com",
             "http://localhost:5173",
             "http://127.0.0.1:8765",
             "chrome-extension://abcdefghijklmnop",

@@ -1,207 +1,144 @@
 #!/bin/sh
 # ==============================================================================
-# CLI - Modern Universal Web Installer (macOS & Linux)
+# Operon Local Bridge - Universal Installer (macOS & Linux)
 # ==============================================================================
-# Usage (Clean/Blank Machine):
-#   curl -fsSL https://raw.githubusercontent.com/operon/cli/main/install.sh | sh
-#   or: wget -qO- https://raw.githubusercontent.com/operon/cli/main/install.sh | sh
-#
-# Requirements: macOS (arm64/x64) or Linux (x64/arm64)
+# Usage:
+#   curl -fsSL https://github.com/tuquet/operon/releases/latest/download/install.sh | sh
 # ==============================================================================
 
 set -e
 
-# ANSI Color formatting
-BOLD='\033[1m'
-CYAN='\033[38;2;56;189;248m'
-GREEN='\033[38;2;74;222;128m'
-YELLOW='\033[38;2;251;191;36m'
-RED='\033[38;2;248;113;113m'
-RESET='\033[0m'
-GRAY='\033[38;2;148;163;184m'
+REPO="${OPERON_REPO:-tuquet/operon}"
+BASE_URL="https://github.com/${REPO}/releases/latest/download"
+OPERON_DIR="${OPERON_HOME:-${HOME}/.operon}"
+BIN_DIR="${OPERON_DIR}/bin"
+TARGET_EXE="${BIN_DIR}/opn"
 
-write_step() {
-    printf "  ${CYAN}[+]${RESET} %s\n" "$1"
-}
-
-write_success() {
-    printf "  ${GREEN}[OK]${RESET} %s\n" "$1"
-}
-
-write_notice() {
-    printf "  ${YELLOW}[!]${RESET} %s\n" "$1"
-}
-
-write_error() {
-    printf "  ${RED}[ERROR]${RESET} %s\n" "$1" >&2
-}
-
-printf "\n"
-printf "${CYAN}   _____                 __            ${RESET}\n"
-printf "${CYAN}  / ___/____  ___  _____/ /____  _____ ${RESET}\n"
-printf "${CYAN}  \__ \/ __ \/ _ \/ ___/ __/ _ \/ ___/ ${RESET}\n"
-printf "${CYAN} ___/ / /_/ /  __/ /__/ /_/  __/ /     ${BOLD}v1.0.0${RESET}\n"
-printf "${CYAN}/____/ .___/\___/\___/\__/\___/_/      ${RESET}\n"
-printf "${CYAN}    /_/                                ${RESET}\n"
-printf "\n"
-printf "  ${BOLD}Unified Zero-Dependency Installer (Unix)${RESET}\n"
-printf "  ${GRAY}Autonomous Browser Automation & Distributed Mesh Runtime${RESET}\n\n"
-
-# 1. Detect Operating System and Architecture
 OS="$(uname -s)"
 ARCH="$(uname -m)"
 
 case "$OS" in
-    Darwin)
-        PLATFORM="macos"
-        ;;
-    Linux)
-        PLATFORM="linux"
-        ;;
+    Darwin) PLATFORM="macos" ;;
+    Linux)  PLATFORM="linux" ;;
     *)
-        write_error "Unsupported operating system: $OS. supports macOS, Linux, and Windows."
+        echo "[operon] ERROR: Unsupported OS: $OS" >&2
         exit 1
         ;;
 esac
 
 case "$ARCH" in
-    x86_64|amd64)
-        TARGET_ARCH="x64"
-        ;;
-    arm64|aarch64)
-        TARGET_ARCH="arm64"
-        ;;
+    x86_64|amd64)  TARGET_ARCH="x64" ;;
+    arm64|aarch64) TARGET_ARCH="arm64" ;;
     *)
-        write_error "Unsupported CPU architecture: $ARCH. supports x86_64 and arm64."
+        echo "[operon] ERROR: Unsupported CPU architecture: $ARCH" >&2
         exit 1
         ;;
 esac
 
-RELEASE_NAME="${PLATFORM}-${TARGET_ARCH}"
-write_step "Detected environment: ${BOLD}${PLATFORM} (${TARGET_ARCH})${RESET}"
+ASSET_NAME="opn-${PLATFORM}-${TARGET_ARCH}"
+echo "[operon] Installing ${ASSET_NAME} to ${BIN_DIR}..."
+mkdir -p "${BIN_DIR}"
 
-# 2. Determine Canonical SSOT Paths
-OPERON_DIR="${OPERON_HOME:-${OPERON_DIR:-${SPECTER_HOME:-${SPECTER_DIR:-${HOME}/.operon}}}}"
-SPECTER_DIR="${OPERON_DIR}"
-SPECTER_BIN_DIR="${SPECTER_DIR}/bin"
-TARGET_EXE="${SPECTER_BIN_DIR}/operon"
+TMP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t 'operon')"
+trap 'rm -rf "${TMP_DIR}"' EXIT
 
-write_step "Preparing canonical SSOT directory: ${SPECTER_BIN_DIR}"
-mkdir -p "${SPECTER_BIN_DIR}"
-
-# 3. Check for local build binary (if running from repo) or download from GitHub
-LOCAL_BIN=""
-if [ -f "./cli/target/x86_64-unknown-linux-musl/release/operon" ]; then
-    LOCAL_BIN="./cli/target/x86_64-unknown-linux-musl/release/operon"
-elif [ -f "./cli/target/release/operon" ]; then
-    LOCAL_BIN="./cli/target/release/operon"
-elif [ -f "./target/release/operon" ]; then
-    LOCAL_BIN="./target/release/operon"
-fi
-
-if [ -n "$LOCAL_BIN" ]; then
-    write_step "Installing local compiled binary from: ${LOCAL_BIN}"
-    cp -f "${LOCAL_BIN}" "${TARGET_EXE}"
-    chmod +x "${TARGET_EXE}"
-    write_success "Installed operon to ${TARGET_EXE}"
-else
-    TARBALL_URL="https://github.com/operon/cli/releases/latest/download/${RELEASE_NAME}.tar.gz"
-    FALLBACK_BIN_URL="https://github.com/operon/cli/releases/latest/download/${RELEASE_NAME}"
-
-    write_step "Downloading ${RELEASE_NAME} from GitHub Releases..."
-
-    DOWNLOADED=0
-    TMP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t 'operon')"
-
+fetch_file() {
+    url="$1"
+    out="$2"
     if command -v curl >/dev/null 2>&1; then
-        if curl -fsSL "${TARBALL_URL}" -o "${TMP_DIR}/operon.tar.gz" 2>/dev/null; then
-            tar -xzf "${TMP_DIR}/operon.tar.gz" -C "${TMP_DIR}"
-            if [ -f "${TMP_DIR}/operon" ]; then
-                mv -f "${TMP_DIR}/operon" "${TARGET_EXE}"
-                DOWNLOADED=1
-            fi
-        elif curl -fsSL "${FALLBACK_BIN_URL}" -o "${TARGET_EXE}" 2>/dev/null; then
-            DOWNLOADED=1
-        fi
+        curl -fsSL "$url" -o "$out"
     elif command -v wget >/dev/null 2>&1; then
-        if wget -q "${TARBALL_URL}" -O "${TMP_DIR}/operon.tar.gz" 2>/dev/null; then
-            tar -xzf "${TMP_DIR}/operon.tar.gz" -C "${TMP_DIR}"
-            if [ -f "${TMP_DIR}/operon" ]; then
-                mv -f "${TMP_DIR}/operon" "${TARGET_EXE}"
-                DOWNLOADED=1
-            fi
-        elif wget -q "${FALLBACK_BIN_URL}" -O "${TARGET_EXE}" 2>/dev/null; then
-            DOWNLOADED=1
-        fi
+        wget -q "$url" -O "$out"
     else
-        write_error "Neither curl nor wget was found. Please install curl or wget to continue."
-        rm -rf "${TMP_DIR}"
+        echo "[operon] ERROR: curl or wget is required." >&2
         exit 1
     fi
+}
 
-    rm -rf "${TMP_DIR}"
+fetch_file "${BASE_URL}/${ASSET_NAME}" "${TMP_DIR}/${ASSET_NAME}"
 
-    if [ "$DOWNLOADED" -eq 1 ]; then
-        chmod +x "${TARGET_EXE}"
-        write_success "Downloaded and installed operon binary to ${TARGET_EXE}"
-    else
-        write_notice "Release asset ${RELEASE_NAME} not found on latest release. Checking existing local installation..."
-        if [ ! -x "${TARGET_EXE}" ]; then
-            write_error "Failed to acquire ${RELEASE_NAME}. Please build from source via 'cargo build --release'."
+if fetch_file "${BASE_URL}/SHA256SUMS.txt" "${TMP_DIR}/SHA256SUMS.txt" 2>/dev/null; then
+    EXPECTED_HASH="$(grep -E "[[:space:]]\*?${ASSET_NAME}$" "${TMP_DIR}/SHA256SUMS.txt" | awk '{print $1}' | head -n 1)"
+    if [ -n "$EXPECTED_HASH" ]; then
+        if command -v sha256sum >/dev/null 2>&1; then
+            ACTUAL_HASH="$(sha256sum "${TMP_DIR}/${ASSET_NAME}" | awk '{print $1}')"
+        elif command -v shasum >/dev/null 2>&1; then
+            ACTUAL_HASH="$(shasum -a 256 "${TMP_DIR}/${ASSET_NAME}" | awk '{print $1}')"
+        else
+            ACTUAL_HASH=""
+        fi
+        if [ -n "$ACTUAL_HASH" ] && [ "$ACTUAL_HASH" != "$EXPECTED_HASH" ]; then
+            echo "[operon] ERROR: SHA256 mismatch (expected $EXPECTED_HASH, got $ACTUAL_HASH)" >&2
             exit 1
         fi
+        [ -n "$ACTUAL_HASH" ] && echo "[operon] SHA256 verified."
     fi
 fi
 
-# 4. Configure PATH in Shell Profile
-write_step "Configuring PATH in shell profiles..."
-PATH_LINE="export PATH=\"\$HOME/.operon/bin:\$PATH\""
-
-SHELL_PROFILES=""
-if [ -n "$BASH_VERSION" ] || [ -f "${HOME}/.bashrc" ]; then
-    SHELL_PROFILES="${SHELL_PROFILES} ${HOME}/.bashrc"
-fi
-if [ -n "$ZSH_VERSION" ] || [ -f "${HOME}/.zshrc" ]; then
-    SHELL_PROFILES="${SHELL_PROFILES} ${HOME}/.zshrc"
-fi
-if [ -f "${HOME}/.profile" ]; then
-    SHELL_PROFILES="${SHELL_PROFILES} ${HOME}/.profile"
+if [ -x "${TARGET_EXE}" ]; then
+    "${TARGET_EXE}" worker stop --force >/dev/null 2>&1 || true
 fi
 
-if [ -z "$SHELL_PROFILES" ]; then
-    SHELL_PROFILES="${HOME}/.profile"
-fi
+mv -f "${TMP_DIR}/${ASSET_NAME}" "${TARGET_EXE}"
+chmod +x "${TARGET_EXE}"
+echo "[operon] Installed binary: ${TARGET_EXE}"
 
-CONFIGURED_ANY=0
-for PROFILE in $SHELL_PROFILES; do
-    if [ -f "$PROFILE" ]; then
-        if ! grep -q "\.operon/bin" "$PROFILE" 2>/dev/null && ! grep -q "\.operon/bin" "$PROFILE" 2>/dev/null; then
-            printf "\n# CLI\n%s\n" "${PATH_LINE}" >> "$PROFILE"
-            write_success "Added to PATH in ${PROFILE}"
-            CONFIGURED_ANY=1
-        fi
+# Configure PATH idempotently
+PATH_LINE='export PATH="$HOME/.operon/bin:$PATH"'
+for PROFILE in "${HOME}/.bashrc" "${HOME}/.zshrc" "${HOME}/.profile"; do
+    if [ -f "$PROFILE" ] && ! grep -q '\.operon/bin' "$PROFILE" 2>/dev/null; then
+        printf "\n# Operon Local Bridge\n%s\n" "${PATH_LINE}" >> "$PROFILE"
     fi
 done
 
-if [ "$CONFIGURED_ANY" -eq 0 ]; then
-    write_success "PATH already configured in shell profile(s)"
+# Register OS autostart & start daemon on 127.0.0.1:8765
+if [ "$PLATFORM" = "macos" ]; then
+    PLIST_DIR="${HOME}/Library/LaunchAgents"
+    PLIST_PATH="${PLIST_DIR}/com.operon.local-bridge.plist"
+    mkdir -p "${PLIST_DIR}" "${OPERON_DIR}/logs"
+    cat > "${PLIST_PATH}" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key><string>com.operon.local-bridge</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>${TARGET_EXE}</string>
+        <string>worker</string>
+        <string>start</string>
+        <string>-H</string><string>127.0.0.1</string>
+        <string>-p</string><string>8765</string>
+    </array>
+    <key>RunAtLoad</key><true/>
+    <key>KeepAlive</key><true/>
+    <key>StandardOutPath</key><string>${OPERON_DIR}/logs/bridge.stdout.log</string>
+    <key>StandardErrorPath</key><string>${OPERON_DIR}/logs/bridge.stderr.log</string>
+</dict>
+</plist>
+EOF
+    launchctl unload "${PLIST_PATH}" >/dev/null 2>&1 || true
+    launchctl load "${PLIST_PATH}" >/dev/null 2>&1 || "${TARGET_EXE}" worker start -H 127.0.0.1 -p 8765 -d
+elif command -v systemctl >/dev/null 2>&1 && systemctl --user status >/dev/null 2>&1; then
+    UNIT_DIR="${HOME}/.config/systemd/user"
+    mkdir -p "${UNIT_DIR}"
+    cat > "${UNIT_DIR}/operon-bridge.service" <<EOF
+[Unit]
+Description=Operon Local Bridge Daemon
+After=network.target
+
+[Service]
+ExecStart=${TARGET_EXE} worker start -H 127.0.0.1 -p 8765
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target
+EOF
+    systemctl --user daemon-reload
+    systemctl --user enable --now operon-bridge.service >/dev/null 2>&1 || "${TARGET_EXE}" worker start -H 127.0.0.1 -p 8765 -d
+else
+    "${TARGET_EXE}" worker start -H 127.0.0.1 -p 8765 -d
 fi
 
-# 5. Run One-Command Bootstrap
-printf "\n"
-write_step "Triggering automationtic ecosystem bootstrap (SSOT, DB, MCP, Chromium LTS)..."
-printf "\n"
-
-export PATH="${SPECTER_BIN_DIR}:${PATH}"
-"${TARGET_EXE}" bootstrap || write_notice "Bootstrap completed with notices."
-
-printf "\n"
-printf "${GREEN}==============================================================================${RESET}\n"
-printf "${GREEN}  SPECTER CLI INSTALLATION COMPLETED SUCCESSFULLY${RESET}\n"
-printf "${GREEN}==============================================================================${RESET}\n\n"
-printf "  To get started, reload your shell or run immediately:\n"
-printf "    ${CYAN}operon browser launch${RESET}  Launch Antidetect Chromium browser sandbox\n"
-printf "    ${CYAN}operon doctor${RESET}          Check environment and system shims\n"
-printf "    ${CYAN}operon status${RESET}          Inspect unified services dashboard\n"
-printf "    ${CYAN}operon gateway start${RESET}    Start secure SOCKS5 mesh tunnel\n\n"
-printf "  ${GRAY}Single Source of Truth Root: ${SPECTER_DIR}${RESET}\n\n"
+echo "[operon] Local Bridge installed and started on http://127.0.0.1:8765"
