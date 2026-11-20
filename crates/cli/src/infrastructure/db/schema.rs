@@ -30,12 +30,17 @@ pub fn init_db(conn: &Connection) -> Result<()> {
 
         CREATE TABLE IF NOT EXISTS browsers (
             id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL DEFAULT 'local-default',
             name TEXT NOT NULL,
+            group_name TEXT DEFAULT 'default',
+            tags TEXT DEFAULT '[]',
             user_agent TEXT,
             timezone TEXT,
             proxy TEXT,
             browser_type TEXT DEFAULT 'Chromium',
             extensions TEXT DEFAULT '["automation"]',
+            fingerprint_config TEXT DEFAULT '{}',
+            startup_flags TEXT DEFAULT '[]',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
@@ -58,19 +63,67 @@ pub fn init_db(conn: &Connection) -> Result<()> {
     let _ = conn.execute("DROP TABLE IF EXISTS workflows", []);
 
     // Safe & Idempotent Schema Migration (Edge Case 6.1):
-    // Ensure 'extensions' column exists on 'browsers' table for pre-existing databases
+    // Ensure all canonical columns exist on 'browsers' table for pre-existing databases
     let mut stmt = conn.prepare("PRAGMA table_info(browsers)")?;
     let columns = stmt
         .query_map([], |row| row.get::<_, String>(1))?
         .filter_map(Result::ok)
         .collect::<Vec<String>>();
 
-    if !columns.iter().any(|c| c == "extensions") {
+    // Canonicalize pre-existing workspace_id column to tenant_id without losing rows
+    let has_workspace_col = columns.iter().any(|c| c == "workspace_id");
+    let has_tenant_col = columns.iter().any(|c| c == "tenant_id");
+    if has_workspace_col && !has_tenant_col {
+        let _ = conn.execute("DROP INDEX IF EXISTS idx_browsers_workspace", []);
         conn.execute(
-            "ALTER TABLE browsers ADD COLUMN extensions TEXT DEFAULT '[\"automation\"]'",
+            "ALTER TABLE browsers RENAME COLUMN workspace_id TO tenant_id",
             [],
         )?;
     }
+
+    let mut stmt_after = conn.prepare("PRAGMA table_info(browsers)")?;
+    let current_cols = stmt_after
+        .query_map([], |row| row.get::<_, String>(1))?
+        .filter_map(Result::ok)
+        .collect::<Vec<String>>();
+
+    let browser_migrations = [
+        (
+            "tenant_id",
+            "ALTER TABLE browsers ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'local-default'",
+        ),
+        (
+            "group_name",
+            "ALTER TABLE browsers ADD COLUMN group_name TEXT DEFAULT 'default'",
+        ),
+        (
+            "tags",
+            "ALTER TABLE browsers ADD COLUMN tags TEXT DEFAULT '[]'",
+        ),
+        (
+            "extensions",
+            "ALTER TABLE browsers ADD COLUMN extensions TEXT DEFAULT '[\"automation\"]'",
+        ),
+        (
+            "fingerprint_config",
+            "ALTER TABLE browsers ADD COLUMN fingerprint_config TEXT DEFAULT '{}'",
+        ),
+        (
+            "startup_flags",
+            "ALTER TABLE browsers ADD COLUMN startup_flags TEXT DEFAULT '[]'",
+        ),
+    ];
+
+    for (col, ddl) in browser_migrations {
+        if !current_cols.iter().any(|c| c == col) {
+            conn.execute(ddl, [])?;
+        }
+    }
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_browsers_tenant ON browsers(tenant_id)",
+        [],
+    )?;
 
     Ok(())
 }

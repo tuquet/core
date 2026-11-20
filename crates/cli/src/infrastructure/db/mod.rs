@@ -6,7 +6,10 @@ pub mod jobs;
 pub mod schema;
 pub mod settings;
 
-pub use browsers::{Browser, SqliteBrowserRepository};
+pub use browsers::{
+    Browser, CreateBrowserRecord, DEFAULT_TENANT_ID, FingerprintConfig, PatchBrowserRecord,
+    SqliteBrowserRepository,
+};
 pub use jobs::{JobDetails, JobHistoryItem, JobInfo, LogItem, SqliteJobRepository};
 pub use settings::SqliteSettingsRepository;
 

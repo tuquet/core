@@ -19,6 +19,9 @@ pub enum AutomationError {
     #[error("Bad request: {0}")]
     BadRequest(String),
 
+    #[error("Conflict: {0}")]
+    Conflict(String),
+
     #[error("Execution failed: {0}")]
     ExecutionFailed(String),
 
@@ -46,6 +49,7 @@ impl IntoResponse for AutomationError {
         let (status, message) = match self {
             AutomationError::NotFound(ref msg) => (StatusCode::NOT_FOUND, msg.clone()),
             AutomationError::BadRequest(ref msg) => (StatusCode::BAD_REQUEST, msg.clone()),
+            AutomationError::Conflict(ref msg) => (StatusCode::CONFLICT, msg.clone()),
             AutomationError::ExecutionFailed(ref msg) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, msg.clone())
             }

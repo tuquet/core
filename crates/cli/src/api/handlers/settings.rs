@@ -169,6 +169,7 @@ mod tests {
             browser: Some(UpdateBrowserSettingsRequest {
                 default_type: None,
                 default_profile_id: Some("profile_custom_99".to_string()),
+                default_profiles: None,
                 executable_path: None,
                 headless: None,
                 default_user_agent: None,

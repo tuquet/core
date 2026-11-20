@@ -27,6 +27,10 @@ Operon is an open-source execution runtime and browser orchestration platform. B
 - **Control plane (`cloud/`)**: Supabase-powered backend providing multi-tenant isolation, database schemas, and row-level security (RLS).
 - **Network gateway**: Dynamic SOCKS5 (`1080`) and embedded HTTP (`8118`) forwarder routing traffic through encrypted mesh tunnels.
 
+### Architecture & Specs
+
+- **Specs, ADRs & Roadmaps:** [tuquet/specs-operon](https://github.com/tuquet/specs-operon) (local: `../specs-operon`)
+
 ---
 
 ## Repository structure

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
@@ -154,6 +155,8 @@ pub struct BrowserSettings {
         alias = "default_browser"
     )]
     pub default_profile_id: Option<String>,
+    #[serde(default, alias = "defaultProfiles")]
+    pub default_profiles: HashMap<String, String>,
     #[serde(alias = "executablePath")]
     pub executable_path: Option<String>,
     pub headless: bool,
@@ -166,9 +169,46 @@ impl Default for BrowserSettings {
         Self {
             default_type: "chromium".to_string(),
             default_profile_id: None,
+            default_profiles: HashMap::new(),
             executable_path: None,
             headless: false,
             default_user_agent: None,
+        }
+    }
+}
+
+impl BrowserSettings {
+    /// Resolves default browser profile ID for `tenant_id`, falling back to legacy global default on `'local-default'`.
+    pub fn get_default_profile_for(&self, tenant_id: &str) -> Option<&str> {
+        if let Some(id) = self.default_profiles.get(tenant_id) {
+            return Some(id.as_str());
+        }
+        if tenant_id == crate::infrastructure::db::DEFAULT_TENANT_ID {
+            return self.default_profile_id.as_deref();
+        }
+        None
+    }
+
+    /// Sets or clears default browser profile ID for `tenant_id` while keeping `'local-default'` synced.
+    pub fn set_default_profile_for(&mut self, tenant_id: &str, profile_id: Option<String>) {
+        let tid = if tenant_id.trim().is_empty() {
+            crate::infrastructure::db::DEFAULT_TENANT_ID
+        } else {
+            tenant_id.trim()
+        };
+        match profile_id {
+            Some(ref id) => {
+                self.default_profiles.insert(tid.to_string(), id.clone());
+                if tid == crate::infrastructure::db::DEFAULT_TENANT_ID {
+                    self.default_profile_id = Some(id.clone());
+                }
+            }
+            None => {
+                self.default_profiles.remove(tid);
+                if tid == crate::infrastructure::db::DEFAULT_TENANT_ID {
+                    self.default_profile_id = None;
+                }
+            }
         }
     }
 }
@@ -251,6 +291,8 @@ pub struct UpdateBrowserSettingsRequest {
         alias = "default_browser"
     )]
     pub default_profile_id: Option<String>,
+    #[serde(default, alias = "defaultProfiles")]
+    pub default_profiles: Option<HashMap<String, String>>,
     #[serde(alias = "executablePath")]
     pub executable_path: Option<String>,
     pub headless: Option<bool>,
@@ -321,6 +363,9 @@ impl AppSettings {
             }
             if b_patch.default_profile_id.is_some() {
                 self.browser.default_profile_id = b_patch.default_profile_id;
+            }
+            if let Some(dps) = b_patch.default_profiles {
+                self.browser.default_profiles.extend(dps);
             }
             if b_patch.executable_path.is_some() {
                 self.browser.executable_path = b_patch.executable_path;

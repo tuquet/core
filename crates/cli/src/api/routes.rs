@@ -1,7 +1,8 @@
 use crate::api::handlers::browsers::{
-    auto_detect_browsers, create_browser, delete_browser, get_browser_detail, get_browsers,
-    import_csv, set_default_browser, sideload_extension, start_browser, stop_browser,
-    update_browser,
+    auto_detect_browsers, batch_delete_browsers, clone_browser, create_browser, delete_browser,
+    get_browser_detail, get_browsers, import_csv, move_browser, patch_browser, probe_browser_proxy,
+    set_default_browser, sideload_extension, start_browser, stop_browser, unbind_browser,
+    update_browser, update_browser_extensions,
 };
 use crate::api::handlers::health::health;
 use crate::api::handlers::history::{clear_history, delete_history_item, get_history, get_logs};
@@ -70,7 +71,13 @@ use utoipa_swagger_ui::SwaggerUi;
         crate::api::handlers::browsers::get_browser_detail,
         crate::api::handlers::browsers::create_browser,
         crate::api::handlers::browsers::update_browser,
+        crate::api::handlers::browsers::patch_browser,
         crate::api::handlers::browsers::delete_browser,
+        crate::api::handlers::browsers::clone_browser,
+        crate::api::handlers::browsers::move_browser,
+        crate::api::handlers::browsers::unbind_browser,
+        crate::api::handlers::browsers::probe_browser_proxy,
+        crate::api::handlers::browsers::batch_delete_browsers,
         crate::api::handlers::browsers::start_browser,
         crate::api::handlers::browsers::stop_browser,
         crate::api::handlers::settings::get_settings,
@@ -78,6 +85,7 @@ use utoipa_swagger_ui::SwaggerUi;
         crate::api::handlers::settings::patch_settings,
         crate::api::handlers::browsers::import_csv,
         crate::api::handlers::browsers::sideload_extension,
+        crate::api::handlers::browsers::update_browser_extensions,
         crate::api::handlers::browsers::auto_detect_browsers,
         crate::api::handlers::browsers::set_default_browser,
         crate::api::handlers::ws::ws_handler
@@ -113,11 +121,23 @@ use utoipa_swagger_ui::SwaggerUi;
             crate::api::handlers::system::SystemMetricsResponse,
             crate::api::handlers::system::RunnerIdentityResponse,
             crate::api::handlers::system::SystemResponse,
+            crate::infrastructure::db::FingerprintConfig,
+            crate::core::browser::importer::CsvImportError,
             crate::api::handlers::browsers::BrowserResponse,
             crate::api::handlers::browsers::CreateBrowserRequest,
             crate::api::handlers::browsers::CreateBrowserResponse,
             crate::api::handlers::browsers::UpdateBrowserRequest,
             crate::api::handlers::browsers::UpdateBrowserResponse,
+            crate::api::handlers::browsers::PatchBrowserRequest,
+            crate::api::handlers::browsers::CloneBrowserRequest,
+            crate::api::handlers::browsers::MoveBrowserRequest,
+            crate::api::handlers::browsers::UnbindBrowserResponse,
+            crate::api::handlers::browsers::ProbeProxyRequest,
+            crate::api::handlers::browsers::ProbeProxyResponse,
+            crate::api::handlers::browsers::BatchDeleteBrowsersRequest,
+            crate::api::handlers::browsers::BatchDeleteFailure,
+            crate::api::handlers::browsers::BatchDeleteBrowsersResponse,
+            crate::api::handlers::browsers::UpdateExtensionsRequest,
             crate::api::handlers::browsers::DeleteBrowserResponse,
             crate::api::handlers::browsers::StartBrowserSessionRequest,
             crate::api::handlers::browsers::StartBrowserSessionResponse,
@@ -218,19 +238,28 @@ pub fn create_router(state: crate::AppState) -> Router {
         .route("/history/{job_id}", delete(delete_history_item))
         .route("/browsers", get(get_browsers).post(create_browser))
         .route("/browsers/auto-detect", post(auto_detect_browsers))
+        .route("/browsers/proxy/probe", post(probe_browser_proxy))
+        .route("/browsers/batch/delete", post(batch_delete_browsers))
         .route("/browsers/sessions", delete(kill_browsers))
         .route(
             "/browsers/{id}",
             get(get_browser_detail)
                 .put(update_browser)
+                .patch(patch_browser)
                 .delete(delete_browser),
         )
+        .route("/browsers/{id}/clone", post(clone_browser))
+        .route("/browsers/{id}/move", post(move_browser))
+        .route("/browsers/{id}/unbind", post(unbind_browser))
         .route(
             "/browsers/{id}/session",
             post(start_browser).delete(stop_browser),
         )
         .route("/browsers/{id}/set-default", post(set_default_browser))
-        .route("/browsers/{id}/extensions", post(sideload_extension))
+        .route(
+            "/browsers/{id}/extensions",
+            post(sideload_extension).put(update_browser_extensions),
+        )
         .route("/browsers/import-csv", post(import_csv))
         .route("/ws", get(ws_handler));
 

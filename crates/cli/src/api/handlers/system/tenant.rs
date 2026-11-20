@@ -23,7 +23,7 @@ use crate::infrastructure::cloud::{CloudApiClient, CredentialStore, TenancyManag
         }
     ]
 }))]
-/// Response descriptor containing current and accessible workspaces/tenants
+/// Response descriptor containing current and accessible tenants
 pub struct TenantListResponse {
     /// Whether query succeeded
     pub success: bool,
@@ -75,7 +75,7 @@ pub struct SwitchTenantResponse {
     get,
     path = "/api/v1/system/tenants",
     operation_id = "get_system_tenants",
-    summary = "List all accessible tenants and active workspace",
+    summary = "List all accessible tenants and active tenant",
     description = "Queries cached and cloud-synced tenants for the authenticated operator without exposing cloud keys to frontend.",
     responses(
         (status = 200, description = "List of accessible tenants", body = TenantListResponse),
@@ -168,7 +168,7 @@ pub async fn get_tenants(State(state): State<AppState>) -> impl IntoResponse {
     post,
     path = "/api/v1/system/tenants/switch",
     operation_id = "switch_system_tenant",
-    summary = "Switch active tenant workspace",
+    summary = "Switch active tenant",
     description = "Re-enrolls this runner device under the target tenant, updates local credentials, and emits a tenant_switched event to SSE.",
     request_body = SwitchTenantRequest,
     responses(
@@ -181,6 +181,41 @@ pub async fn switch_tenant(
     State(state): State<AppState>,
     Json(payload): Json<SwitchTenantRequest>,
 ) -> impl IntoResponse {
+    // Allow local tenant switching seamlessly when operating without Cloud enrollment
+    if payload.target.trim().starts_with("local-") {
+        let local_id = payload.target.trim().to_string();
+        let active_tenant = TenantInfo {
+            id: local_id.clone(),
+            slug: local_id.clone(),
+            name: if local_id == crate::infrastructure::db::DEFAULT_TENANT_ID {
+                "Local Tenant".to_string()
+            } else {
+                local_id.clone()
+            },
+            role: Some("owner".to_string()),
+            status: Some("active".to_string()),
+            is_active: true,
+        };
+        let _ = state.tx.send(
+            serde_json::json!({
+                "type": "tenant_switched",
+                "tenantId": active_tenant.id,
+                "tenantSlug": active_tenant.slug,
+                "tenantName": active_tenant.name
+            })
+            .to_string(),
+        );
+        return (
+            StatusCode::OK,
+            Json(SwitchTenantResponse {
+                success: true,
+                message: format!("Switched active tenant to '{}'", active_tenant.name),
+                active_tenant: Some(active_tenant),
+            }),
+        )
+            .into_response();
+    }
+
     match TenancyManager::switch_tenant(&state.config.data_dir, &payload.target).await {
         Ok(active_tenant) => {
             // Broadcast tenant switch event to global SSE stream
@@ -198,7 +233,7 @@ pub async fn switch_tenant(
                 StatusCode::OK,
                 Json(SwitchTenantResponse {
                     success: true,
-                    message: format!("Switched active workspace to '{}'", active_tenant.name),
+                    message: format!("Switched active tenant to '{}'", active_tenant.name),
                     active_tenant: Some(active_tenant),
                 }),
             )
@@ -208,7 +243,7 @@ pub async fn switch_tenant(
             StatusCode::BAD_REQUEST,
             Json(SwitchTenantResponse {
                 success: false,
-                message: format!("Failed to switch workspace: {}", e),
+                message: format!("Failed to switch tenant: {}", e),
                 active_tenant: None,
             }),
         )
