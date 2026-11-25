@@ -262,7 +262,7 @@ async fn resolve_web_url(explicit_port: Option<u16>, route: &str) -> String {
         return format!("http://localhost:5666{route}");
     }
 
-    format!("https://tuquet-console.pages.dev{route}")
+    format!("https://console.tuquet.com{route}")
 }
 
 async fn launch_web_shell(

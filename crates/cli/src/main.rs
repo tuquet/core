@@ -74,6 +74,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         },
         Some(Commands::Desk(args)) => commands::desk::handle(args).await,
+        Some(Commands::Web(mut args)) => {
+            args.web = true;
+            commands::desk::handle(args).await
+        }
         Some(Commands::Update(args)) => {
             automation_core::infrastructure::updater::run_update(
                 args.desk,

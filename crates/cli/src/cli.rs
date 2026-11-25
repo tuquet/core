@@ -95,6 +95,10 @@ pub enum Commands {
     #[command(name = "desk", aliases = ["desktop", "workstation"], hide = true)]
     Desk(crate::commands::desk::DeskArgs),
 
+    /// Open Web Control Plane UI in browser (auto-starts local daemon)
+    #[command(name = "web")]
+    Web(crate::commands::desk::DeskArgs),
+
     /// Update Operon CLI and/or Operon Desktop from GitHub Releases
     #[command(name = "update", aliases = ["upgrade"])]
     Update(UpdateArgs),
