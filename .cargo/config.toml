@@ -1,4 +1,0 @@
-[alias]
-c = "check --workspace --all-targets"
-t = "test -p operon"
-r = "run -p operon --bin operon --"
