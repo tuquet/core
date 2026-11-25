@@ -12,5 +12,5 @@ pub fn render_hero(
 
 /// Clean 1-line update notification
 pub fn render_update_banner(current: &str, latest: &str) -> String {
-    format!("🔔 Update available: v{current} → v{latest} (run `opn upgrade`)")
+    format!("🔔 Update available: v{current} → v{latest} (run `opn update`)")
 }

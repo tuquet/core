@@ -73,7 +73,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Ok(())
             }
         },
-        Some(Commands::Workstation(args)) => commands::workstation::handle(args).await,
+        Some(Commands::Desk(args)) => commands::desk::handle(args).await,
+        Some(Commands::Update(args)) => {
+            automation_core::infrastructure::updater::run_update(
+                args.desk,
+                args.all,
+                &args.channel,
+                args.yes,
+            )
+            .await
+        }
         Some(Commands::Schema { command }) => commands::schema::handle(command, false).await,
         Some(Commands::Mcp) => commands::mcp::run().await,
         None => {

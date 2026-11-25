@@ -342,7 +342,7 @@ pub async fn show_dashboard(format: OutputFormat) -> Result<(), Box<dyn std::err
             && info.has_update
         {
             crate::ui::prompt::clack_step_warn(format!(
-                "Update available: v{} -> v{} (run 'opn upgrade')",
+                "Update available: v{} -> v{} (run 'opn update')",
                 info.current_version, info.latest_version
             ));
         }

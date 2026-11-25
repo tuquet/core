@@ -2,9 +2,9 @@
 name = "operon"
 version = "1.2.1"
 edition = "2024"
-default-run = "opn"
+default-run = "operon"
 description = "Operon - Ultra-High Performance Distributed Automation Mesh & Browser Sandbox Runtime"
-repository = "https://github.com/operon/operon"
+repository = "https://github.com/tuquet/operon"
 license = "MIT"
 
 [lib]
@@ -12,7 +12,7 @@ name = "automation_core"
 path = "src/lib.rs"
 
 [[bin]]
-name = "opn"
+name = "operon"
 path = "src/main.rs"
 
 [dependencies]

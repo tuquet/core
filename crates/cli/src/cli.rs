@@ -91,11 +91,13 @@ pub enum Commands {
         command: Option<SecretSubcommands>,
     },
 
-    /// Launch the Workstation Control Plane UI (Job monitor, Devices, Browsers)
-    #[command(name = "workstation", aliases = ["desktop"])]
-    Workstation(crate::commands::workstation::WorkstationArgs),
+    /// Launch Operon Desktop or Web host shell Control Plane UI
+    #[command(name = "desk", aliases = ["desktop", "workstation"])]
+    Desk(crate::commands::desk::DeskArgs),
 
-    /// Run Model Context Protocol (MCP) JSON-RPC 2.0 stdio server for AI agents
+    /// Update Operon CLI and/or Operon Desktop from GitHub Releases
+    #[command(name = "update", aliases = ["upgrade"])]
+    Update(UpdateArgs),
 
     /// Inspect and export system and configuration schemas
     #[command(name = "schema")]
@@ -1319,6 +1321,25 @@ pub enum WorkflowCommands {
         #[arg(value_name = "WORKFLOW_ID")]
         id: String,
     },
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct UpdateArgs {
+    /// Update Operon Desktop instead of only the CLI
+    #[arg(long)]
+    pub desk: bool,
+
+    /// Update both Operon CLI and installed Operon Desktop
+    #[arg(long)]
+    pub all: bool,
+
+    /// Release channel for Operon Desktop (stable | beta | nightly)
+    #[arg(long, default_value = "stable", value_name = "CHANNEL")]
+    pub channel: String,
+
+    /// Auto-confirm prompts (e.g. restarting daemon after update)
+    #[arg(short = 'y', long)]
+    pub yes: bool,
 }
 
 #[derive(Args, Debug, Clone)]

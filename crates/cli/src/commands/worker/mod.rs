@@ -141,15 +141,16 @@ mod tests {
 
     #[test]
     fn test_is_valid_worker_name() {
-        // Valid worker binary is strictly opn / opn.exe (case-insensitive)
+        // Valid daemon binary names: operon (primary) and opn (CLI alias), case-insensitive
+        assert!(is_valid_worker_name("operon"));
+        assert!(is_valid_worker_name("operon.exe"));
+        assert!(is_valid_worker_name("OPERON.EXE"));
         assert!(is_valid_worker_name("opn"));
         assert!(is_valid_worker_name("opn.exe"));
         assert!(is_valid_worker_name("OPN.EXE"));
         assert!(is_valid_worker_name("  opn.exe  "));
 
-        // Obsolete legacy names & non-binaries rejected per KISS & YAGNI
-        assert!(!is_valid_worker_name("operon"));
-        assert!(!is_valid_worker_name("operon.exe"));
+        // Obsolete legacy names & non-binaries rejected per SSOT
         assert!(!is_valid_worker_name("spc"));
         assert!(!is_valid_worker_name("SPC.EXE"));
         assert!(!is_valid_worker_name("specter"));

@@ -24,7 +24,7 @@ pub fn get_log_file_path(data_dir: &str) -> PathBuf {
 pub fn is_valid_worker_name(raw_name: &str) -> bool {
     let name = raw_name.trim().to_lowercase();
     let base = name.strip_suffix(".exe").unwrap_or(&name);
-    base == "opn"
+    base == "operon" || base == "opn"
 }
 
 use crate::ui::{OutputFormat, respond_with};
@@ -383,7 +383,7 @@ pub async fn run_server(
 
         tokio::time::sleep(std::time::Duration::from_millis(600)).await;
 
-        let mut card = crate::ui::Card::new("WORKER");
+        let mut card = crate::ui::Card::new("DAEMON");
         card.with_badge(crate::ui::badge_online("STARTED (DETACHED)"));
         card.with_min_width(64);
         let mode_desc = if cloud {
