@@ -37,7 +37,7 @@ pub enum Commands {
     },
 
     /// Distributed worker daemon and cloud execution node
-    #[command(name = "worker")]
+    #[command(name = "worker", hide = true)]
     Worker {
         #[command(subcommand)]
         command: Option<WorkerSubcommands>,
@@ -51,7 +51,7 @@ pub enum Commands {
     },
 
     /// Manage environment variables, local secrets vault, and workspace sync
-    #[command(name = "env")]
+    #[command(name = "env", hide = true)]
     Env {
         /// Project to inspect/switch (e.g. admin, bot, cloud)
         project: Option<String>,
@@ -92,7 +92,7 @@ pub enum Commands {
     },
 
     /// Launch Operon Desktop or Web host shell Control Plane UI
-    #[command(name = "desk", aliases = ["desktop", "workstation"])]
+    #[command(name = "desk", aliases = ["desktop", "workstation"], hide = true)]
     Desk(crate::commands::desk::DeskArgs),
 
     /// Update Operon CLI and/or Operon Desktop from GitHub Releases
@@ -100,7 +100,7 @@ pub enum Commands {
     Update(UpdateArgs),
 
     /// Inspect and export system and configuration schemas
-    #[command(name = "schema")]
+    #[command(name = "schema", hide = true)]
     Schema {
         #[command(subcommand)]
         command: Option<SchemaSubcommands>,
