@@ -157,6 +157,11 @@ async fn perform_in_place_self_update(
                 checksum_asset = Some((name.to_string(), download_url.to_string()));
             }
 
+            // Match release binary asset (e.g. opn-windows-x64.exe, opn-linux-x64, opn-macos-arm64)
+            if name == format!("opn-{}.exe", prefix) || name == format!("opn-{}", prefix) {
+                selected_asset = Some((name.to_string(), download_url.to_string(), size));
+                break;
+            }
             // Match full prefix archive (operon)
             if name.starts_with(&prefix) && (name.ends_with(".zip") || name.ends_with(".tar.gz")) {
                 selected_asset = Some((name.to_string(), download_url.to_string(), size));

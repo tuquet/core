@@ -16,11 +16,13 @@ mod tests {
     fn test_is_newer_version() {
         assert!(is_newer_version("1.0.0", "1.0.1"));
         assert!(is_newer_version("1.0.0", "v1.1.0"));
+        assert!(is_newer_version("1.0.0", "core-v1.1.0"));
         assert!(is_newer_version("1.0.0", "2.0.0"));
         assert!(is_newer_version("1.2.3", "1.3.0"));
 
         assert!(!is_newer_version("1.0.0", "1.0.0"));
         assert!(!is_newer_version("1.0.0", "v1.0.0"));
+        assert!(!is_newer_version("1.0.0", "core-v1.0.0"));
         assert!(!is_newer_version("1.1.0", "1.0.5"));
         assert!(!is_newer_version("2.0.0", "1.9.9"));
     }

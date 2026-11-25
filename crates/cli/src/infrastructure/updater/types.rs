@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-pub const GITHUB_REPO: &str = "operon/cli";
+pub const GITHUB_REPO: &str = "tuquet/operon";
 pub const CACHE_TTL_SECS: u64 = 86400; // 24 hours
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -12,10 +12,18 @@ pub struct UpdateInfo {
     pub checked_at: u64,
 }
 
+/// Strip symmetric (`core-v`) or legacy (`v`) release tag prefix.
+pub fn normalize_tag(raw: &str) -> &str {
+    let trimmed = raw.trim();
+    trimmed
+        .strip_prefix("core-v")
+        .or_else(|| trimmed.strip_prefix('v'))
+        .unwrap_or(trimmed)
+}
+
 pub fn is_newer_version(current: &str, latest: &str) -> bool {
     let parse_ver = |v: &str| -> Vec<u32> {
-        let clean = v.trim().trim_start_matches('v');
-        clean
+        normalize_tag(v)
             .split(['.', '-'])
             .filter_map(|s| s.parse::<u32>().ok())
             .collect()

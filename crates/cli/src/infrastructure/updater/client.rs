@@ -1,7 +1,7 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use super::cache::get_cache_file_path;
-use super::types::{GITHUB_REPO, UpdateInfo, is_newer_version};
+use super::types::{GITHUB_REPO, UpdateInfo, is_newer_version, normalize_tag};
 
 /// Constructs a proxy-aware HTTP client with standard timeouts and User-Agent.
 pub fn create_http_client(timeout_secs: u64) -> Result<reqwest::Client, reqwest::Error> {
@@ -91,11 +91,11 @@ pub async fn check_and_save_latest_version() -> Result<UpdateInfo, Box<dyn std::
 
     let json: serde_json::Value = serde_json::from_slice(&body_bytes)?;
     let raw_tag = json.get("tag_name").and_then(|v| v.as_str()).unwrap_or("");
-    let latest_clean = raw_tag.trim().trim_start_matches('v').to_string();
+    let latest_clean = normalize_tag(raw_tag).to_string();
     let release_url = json
         .get("html_url")
         .and_then(|v| v.as_str())
-        .unwrap_or("https://github.com/operon/cli/releases")
+        .unwrap_or("https://github.com/tuquet/operon/releases")
         .to_string();
 
     let current = env!("CARGO_PKG_VERSION").to_string();
