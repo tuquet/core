@@ -87,6 +87,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
             .await
         }
+        Some(Commands::Version) => {
+            println!("operon {}", env!("CARGO_PKG_VERSION"));
+            Ok(())
+        }
         Some(Commands::Schema { command }) => commands::schema::handle(command, false).await,
         Some(Commands::Mcp) => commands::mcp::run().await,
         None => {

@@ -20,9 +20,14 @@ pub fn get_styles() -> Styles {
     author = "Ecosystem <operon@users.noreply.github.com>",
     version = env!("CARGO_PKG_VERSION"),
     about = "Autonomous Browser Automation & Distributed Mesh Runtime",
+    disable_version_flag = true,
     styles = get_styles(),
 )]
 pub struct Cli {
+    /// Print version
+    #[arg(short = 'v', short_alias = 'V', long = "version", action = clap::ArgAction::Version)]
+    pub version: Option<bool>,
+
     #[command(subcommand)]
     pub command: Option<Commands>,
 }
@@ -102,6 +107,10 @@ pub enum Commands {
     /// Update Operon CLI and/or Operon Desktop from GitHub Releases
     #[command(name = "update", aliases = ["upgrade"])]
     Update(UpdateArgs),
+
+    /// Print version information
+    #[command(name = "version")]
+    Version,
 
     /// Inspect and export system and configuration schemas
     #[command(name = "schema", hide = true)]
