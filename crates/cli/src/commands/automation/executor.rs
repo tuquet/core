@@ -4,7 +4,6 @@ use tokio::sync::Mutex;
 
 use crate::AppState;
 use crate::config::AppConfig;
-use crate::infrastructure::db::AutomationDb;
 
 pub async fn run_workflow(
     workflow_path_opt: Option<String>,
@@ -19,7 +18,9 @@ pub async fn run_workflow(
         .map(std::time::Duration::from_secs)
         .unwrap_or(std::time::Duration::from_secs(300));
     let mut config = AppConfig::load();
-    let db = Arc::new(Mutex::new(AutomationDb::new_in_memory()?));
+    let db = Arc::new(Mutex::new(crate::infrastructure::db::open_persistent_db(
+        &config.data_dir,
+    )?));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
     let bound_port = listener.local_addr()?.port();

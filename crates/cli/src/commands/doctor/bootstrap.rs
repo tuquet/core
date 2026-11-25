@@ -50,16 +50,12 @@ pub async fn bootstrap(force_browser: bool) -> Result<(), Box<dyn std::error::Er
     // ─────────────────────────────────────────────────────────────────────────────
     // 2. Initialize Automation SQLite Database
     // ─────────────────────────────────────────────────────────────────────────────
-    let data_dir = root.join(crate::constants::DIR_DATA);
-    let _ = std::fs::create_dir_all(&data_dir);
-    let db_path = data_dir.join(crate::constants::FILE_OPERON_SQLITE);
-    let legacy_db_path = root
+    let default_auto_str = root
         .join(crate::constants::PILLAR_AUTOMATION)
-        .join(crate::constants::FILE_LEGACY_AUTOMATION_SQLITE);
-    if !db_path.exists() && legacy_db_path.exists() {
-        let _ = std::fs::copy(&legacy_db_path, &db_path);
-    }
-    match crate::infrastructure::db::AutomationDb::new(&db_path) {
+        .to_string_lossy()
+        .to_string();
+    let db_path = crate::infrastructure::db::resolve_db_path(&default_auto_str);
+    match crate::infrastructure::db::open_persistent_db(&default_auto_str) {
         Ok(_) => {
             println!(
                 "  {GREEN}✓{RESET} SQLite database initialized: {}",

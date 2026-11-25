@@ -32,19 +32,10 @@ pub fn run(verbose: bool) -> Result<CoreResult, Box<dyn std::error::Error>> {
         std::fs::create_dir_all(d)?;
     }
 
-    let data_dir = root.join(crate::constants::DIR_DATA);
-    std::fs::create_dir_all(&data_dir)?;
-    let db_path = data_dir.join(crate::constants::FILE_OPERON_SQLITE);
-
-    // Auto-migrate from legacy ~/.operon/automation/automation.sqlite if present
-    let legacy_db_path = root
-        .join(crate::constants::PILLAR_AUTOMATION)
-        .join(crate::constants::FILE_LEGACY_AUTOMATION_SQLITE);
-    if !db_path.exists() && legacy_db_path.exists() {
-        let _ = std::fs::copy(&legacy_db_path, &db_path);
-    }
-
-    let _ = crate::infrastructure::db::AutomationDb::new(&db_path)?;
+    let default_automation_dir = root.join(crate::constants::PILLAR_AUTOMATION);
+    let default_auto_str = default_automation_dir.to_string_lossy();
+    let db_path = crate::infrastructure::db::resolve_db_path(&default_auto_str);
+    let _ = crate::infrastructure::db::open_persistent_db(&default_auto_str)?;
 
     if verbose {
         clack_step_ok(format!(

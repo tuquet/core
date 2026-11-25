@@ -7,7 +7,6 @@ use tracing_subscriber::FmtSubscriber;
 
 use crate::AppState;
 use crate::config::AppConfig;
-use crate::infrastructure::db::AutomationDb;
 
 pub fn get_pid_file_path(data_dir: &str) -> PathBuf {
     Path::new(data_dir)
@@ -426,7 +425,21 @@ pub async fn run_server(
     let pid_file_path = get_pid_file_path(&config.data_dir);
     let _ = std::fs::write(&pid_file_path, pid.to_string());
 
-    let db = Arc::new(Mutex::new(AutomationDb::new_in_memory()?));
+    let persistent_db = crate::infrastructure::db::open_persistent_db(&config.data_dir)?;
+    let browsers_rel =
+        crate::core::browser::archive::get_browsers_base_path(&config.data_dir).await;
+    let recovered = crate::infrastructure::db::reconcile_orphan_browser_dirs(
+        &persistent_db,
+        &config.data_dir,
+        &browsers_rel,
+    );
+    if recovered > 0 {
+        info!(
+            "Recovered {} orphaned browser profile(s) from disk",
+            recovered
+        );
+    }
+    let db = Arc::new(Mutex::new(persistent_db));
 
     let (tx, _) = tokio::sync::broadcast::channel(10000);
     let (worker_tx, _) = tokio::sync::broadcast::channel(10000);
