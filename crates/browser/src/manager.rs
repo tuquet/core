@@ -36,6 +36,36 @@ pub fn browser_launchers()
     LAUNCHERS.get_or_init(|| Arc::new(RwLock::new(HashMap::new())))
 }
 
+/// Reaps any tracked browser launchers whose OS process has exited (e.g. closed by user)
+/// and returns the IDs that were still marked active in the registry/sessions.
+pub async fn reap_exited_browsers() -> Vec<String> {
+    let mut candidates = Vec::new();
+    {
+        let mut launchers = browser_launchers().write().await;
+        launchers.retain(|id, launcher| {
+            if launcher.has_exited() {
+                candidates.push(id.clone());
+                false
+            } else {
+                true
+            }
+        });
+    }
+    if candidates.is_empty() {
+        return candidates;
+    }
+    let mut reaped = Vec::new();
+    let mut registry = browser_registry().write().await;
+    let mut sessions = browser_sessions().write().await;
+    for id in candidates {
+        let was_tracked = registry.remove(&id).is_some() | sessions.remove(&id).is_some();
+        if was_tracked {
+            reaped.push(id);
+        }
+    }
+    reaped
+}
+
 #[derive(Debug, Clone)]
 pub struct BrowserManagerOptions {
     pub default_browser: String,

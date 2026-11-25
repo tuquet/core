@@ -217,6 +217,14 @@ impl BrowserLauncher {
     pub fn get_ws_url(&self) -> Option<&str> {
         self.ws_url.as_deref()
     }
+
+    /// Returns `true` if the underlying browser process has exited.
+    pub fn has_exited(&mut self) -> bool {
+        match self.process.as_mut() {
+            Some(child) => matches!(child.try_wait(), Ok(Some(_))),
+            None => true,
+        }
+    }
 }
 
 impl Drop for BrowserLauncher {

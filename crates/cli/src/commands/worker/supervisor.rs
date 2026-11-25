@@ -445,6 +445,31 @@ pub async fn run_server(
     let _reporter_handle =
         crate::infrastructure::cloud_reporter::CloudReporter::start_background_loop(state.clone());
 
+    // Watch for browsers closed directly by the user (OS close button) and emit SSE offline events
+    let exit_monitor_state = state.clone();
+    tokio::spawn(async move {
+        let mut ticker = tokio::time::interval(std::time::Duration::from_secs(1));
+        loop {
+            ticker.tick().await;
+            let exited = crate::core::browser::manager::reap_exited_browsers().await;
+            if !exited.is_empty() {
+                let mut connected = crate::api::handlers::jobs::connected_browsers()
+                    .write()
+                    .await;
+                for id in exited {
+                    connected.remove(&id);
+                    let _ = exit_monitor_state.tx.send(
+                        serde_json::json!({
+                            "type": "browser_offline",
+                            "id": id,
+                        })
+                        .to_string(),
+                    );
+                }
+            }
+        }
+    });
+
     // Start in-process Supabase Claim Loop if --claim is set or CLAIM_ENABLED=1
     let claim_requested = claim
         || std::env::var("CLAIM_ENABLED")
