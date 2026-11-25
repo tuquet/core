@@ -3,7 +3,9 @@ use std::io::{Cursor, Read};
 use std::path::Path;
 
 use super::cache::get_cached_update;
-use super::client::{check_and_save_latest_version, fetch_bytes_with_fallback};
+use super::client::{
+    check_and_save_latest_version, fetch_bytes_with_fallback, fetch_bytes_with_progress,
+};
 use super::types::{GITHUB_REPO, UpdateInfo};
 
 /// Update Operon CLI and/or Operon Desktop from GitHub Releases.
@@ -255,20 +257,31 @@ async fn perform_in_place_self_update(
         )
     })?;
 
-    let size_mb = asset_size as f64 / 1_048_576.0;
-    println!(
-        "{} Downloading release asset: \x1b[38;2;56;189;248m{}\x1b[0m ({:.1} MB)...",
-        crate::ui::badge_step("DOWNLOAD"),
-        asset_name,
-        size_mb
-    );
+    let known_total = (asset_size > 0).then_some(asset_size);
+    let sp_dl = crate::ui::prompt::ClackSpinner::start(crate::ui::prompt::format_download_bar(
+        &format!("Downloading {asset_name}"),
+        0,
+        known_total,
+    ));
 
-    let downloaded_bytes = fetch_bytes_with_fallback(&download_url, 120).await?;
-    println!(
-        "{} Successfully received {} bytes from GitHub Releases",
-        crate::ui::badge_step("RECEIVED"),
-        downloaded_bytes.len()
-    );
+    let mut last_rendered = 0u64;
+    let downloaded_bytes = fetch_bytes_with_progress(&download_url, 120, |dl, total| {
+        let tot = total.or(known_total);
+        if dl.saturating_sub(last_rendered) >= 65_536 || tot.is_some_and(|t| dl >= t) {
+            last_rendered = dl;
+            sp_dl.set_message(crate::ui::prompt::format_download_bar(
+                &format!("Downloading {asset_name}"),
+                dl,
+                tot,
+            ));
+        }
+    })
+    .await?;
+
+    sp_dl.finish(format!(
+        "Downloaded \x1b[38;2;56;189;248m{asset_name}\x1b[0m ({:.1} MB)",
+        downloaded_bytes.len() as f64 / 1_048_576.0
+    ));
 
     // Optional SHA-256 verification when checksum asset exists
     if let Some((_, csum_url)) = checksum_asset
@@ -287,9 +300,8 @@ async fn perform_in_place_self_update(
                     )
                     .into());
                 }
-                println!(
-                    "{} Verified SHA256 checksum: \x1b[38;2;34;197;94mMATCH\x1b[0m",
-                    crate::ui::badge_step("VERIFY")
+                crate::ui::prompt::clack_step_ok(
+                    "Verified SHA256 checksum: \x1b[38;2;34;197;94mMATCH\x1b[0m",
                 );
                 break;
             }

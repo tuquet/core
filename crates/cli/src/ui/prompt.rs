@@ -243,11 +243,12 @@ pub fn clack_block(rendered: &str) {
     println!("  \x1b[90m{S_BAR}\x1b[0m");
 }
 
-/// RAII `@clack/prompts` animated spinner (`◒ ◐ ◓ ◑`)
-/// Automationtically cleans up terminal line on completion, failure, or drop.
+/// RAII `@clack/prompts` animated spinner (`⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏`)
+/// Automatically cleans up terminal line on completion, failure, or drop.
 /// In Non-TTY (Agent mode), emits zero animation frames to save tokens.
 pub struct ClackSpinner {
     active: Arc<AtomicBool>,
+    message: Arc<std::sync::Mutex<String>>,
     handle: Option<std::thread::JoinHandle<()>>,
     start_time: Instant,
     is_tty: bool,
@@ -255,24 +256,25 @@ pub struct ClackSpinner {
 
 impl ClackSpinner {
     pub fn start(message: impl Into<String>) -> Self {
-        let msg = message.into();
+        let msg = Arc::new(std::sync::Mutex::new(message.into()));
         let is_tty = io::stderr().is_terminal() && io::stdout().is_terminal();
         let active = Arc::new(AtomicBool::new(true));
         let start_time = Instant::now();
 
         let handle = if is_tty {
             let active_clone = Arc::clone(&active);
-            let msg_clone = msg.clone();
+            let msg_clone = Arc::clone(&msg);
             Some(std::thread::spawn(move || {
-                let frames = ["◒", "◐", "◓", "◑"];
+                let frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
                 let mut idx = 0usize;
                 let _ = execute!(io::stderr(), cursor::Hide);
                 while active_clone.load(Ordering::Relaxed) {
                     let frame = frames[idx % frames.len()];
-                    eprint!("\r\x1b[2K  \x1b[35m{frame}\x1b[0m  \x1b[90m{msg_clone}\x1b[0m");
+                    let text = msg_clone.lock().map(|g| g.clone()).unwrap_or_default();
+                    eprint!("\r\x1b[2K  \x1b[36m{frame}\x1b[0m  \x1b[90m{text}\x1b[0m");
                     let _ = io::stderr().flush();
                     idx = idx.wrapping_add(1);
-                    std::thread::sleep(Duration::from_millis(80));
+                    std::thread::sleep(Duration::from_millis(70));
                 }
             }))
         } else {
@@ -281,9 +283,17 @@ impl ClackSpinner {
 
         Self {
             active,
+            message: msg,
             handle,
             start_time,
             is_tty,
+        }
+    }
+
+    /// Update the live message shown next to the animated spinner.
+    pub fn set_message(&self, message: impl Into<String>) {
+        if let Ok(mut guard) = self.message.lock() {
+            *guard = message.into();
         }
     }
 
@@ -332,6 +342,27 @@ impl ClackSpinner {
 impl Drop for ClackSpinner {
     fn drop(&mut self) {
         self.stop_thread();
+    }
+}
+
+/// Formats a compact download progress bar with percentage and megabyte counters.
+pub fn format_download_bar(label: &str, downloaded: u64, total: Option<u64>) -> String {
+    let dl_mb = downloaded as f64 / 1_048_576.0;
+    if let Some(tot) = total
+        && tot > 0
+    {
+        let ratio = (downloaded as f64 / tot as f64).clamp(0.0, 1.0);
+        let pct = ratio * 100.0;
+        let width = 18usize;
+        let filled = (ratio * width as f64).round() as usize;
+        let bar_filled = "█".repeat(filled.min(width));
+        let bar_empty = "░".repeat(width.saturating_sub(filled));
+        let tot_mb = tot as f64 / 1_048_576.0;
+        format!(
+            "{label}  \x1b[36m{bar_filled}\x1b[90m{bar_empty}\x1b[0m  \x1b[1m{pct:5.1}%\x1b[0m \x1b[90m({dl_mb:.1}/{tot_mb:.1} MB)\x1b[0m"
+        )
+    } else {
+        format!("{label}  \x1b[90m({dl_mb:.1} MB)\x1b[0m")
     }
 }
 

@@ -38,15 +38,42 @@ pub fn create_http_client(timeout_secs: u64) -> Result<reqwest::Client, reqwest:
     builder.build()
 }
 
-/// Fetch URL bytes using `reqwest` first, falling back to OS-native `curl` (Windows Schannel / system CA store)
-/// when `rustls` webpki-roots cannot verify an enterprise SSL inspection certificate or system proxy.
-pub async fn fetch_bytes_with_fallback(url: &str, timeout_secs: u64) -> Result<Vec<u8>, String> {
+/// Fetch URL bytes using `reqwest` first (streaming progress), falling back to OS-native `curl`
+/// (Windows Schannel / system CA store) when `rustls` webpki-roots cannot verify an enterprise SSL
+/// inspection certificate or system proxy.
+pub async fn fetch_bytes_with_progress<F>(
+    url: &str,
+    timeout_secs: u64,
+    mut on_progress: F,
+) -> Result<Vec<u8>, String>
+where
+    F: FnMut(u64, Option<u64>),
+{
+    use futures::StreamExt;
+
     if let Ok(client) = create_http_client(timeout_secs)
         && let Ok(resp) = client.get(url).send().await
         && resp.status().is_success()
-        && let Ok(bytes) = resp.bytes().await
     {
-        return Ok(bytes.to_vec());
+        let total = resp.content_length();
+        let mut buf = Vec::with_capacity(total.unwrap_or(0) as usize);
+        let mut stream = resp.bytes_stream();
+        let mut ok = true;
+        while let Some(chunk_res) = stream.next().await {
+            match chunk_res {
+                Ok(chunk) => {
+                    buf.extend_from_slice(&chunk);
+                    on_progress(buf.len() as u64, total);
+                }
+                Err(_) => {
+                    ok = false;
+                    break;
+                }
+            }
+        }
+        if ok {
+            return Ok(buf);
+        }
     }
 
     // Fallback to OS-native curl (uses Windows Schannel / macOS SecureTransport / system CA store)
@@ -78,7 +105,13 @@ pub async fn fetch_bytes_with_fallback(url: &str, timeout_secs: u64) -> Result<V
         return Err(format!("Failed to fetch {}: {}", url, stderr.trim()));
     }
 
+    on_progress(output.stdout.len() as u64, Some(output.stdout.len() as u64));
     Ok(output.stdout)
+}
+
+/// Fetch URL bytes using `reqwest` first, falling back to OS-native `curl`.
+pub async fn fetch_bytes_with_fallback(url: &str, timeout_secs: u64) -> Result<Vec<u8>, String> {
+    fetch_bytes_with_progress(url, timeout_secs, |_, _| {}).await
 }
 
 /// Query GitHub API directly for the latest release and update local cache.
