@@ -41,8 +41,8 @@ pub enum Commands {
         command: Option<CloudSubcommands>,
     },
 
-    /// Distributed worker daemon and cloud execution node
-    #[command(name = "worker", hide = true)]
+    /// Local daemon service and execution node
+    #[command(name = "daemon", alias = "worker")]
     Worker {
         #[command(subcommand)]
         command: Option<WorkerSubcommands>,
