@@ -4,6 +4,7 @@ use crate::api::handlers::browsers::{
     set_default_browser, sideload_extension, start_browser, stop_browser, unbind_browser,
     update_browser, update_browser_extensions,
 };
+use crate::api::handlers::runtimes::{delete_runtime, install_runtime, list_runtimes, use_runtime};
 use crate::api::handlers::health::health;
 use crate::api::handlers::history::{clear_history, delete_history_item, get_history, get_logs};
 use crate::api::handlers::jobs::{
@@ -88,6 +89,10 @@ use utoipa_swagger_ui::SwaggerUi;
         crate::api::handlers::browsers::update_browser_extensions,
         crate::api::handlers::browsers::auto_detect_browsers,
         crate::api::handlers::browsers::set_default_browser,
+        crate::api::handlers::runtimes::list_runtimes,
+        crate::api::handlers::runtimes::install_runtime,
+        crate::api::handlers::runtimes::use_runtime,
+        crate::api::handlers::runtimes::delete_runtime,
         crate::api::handlers::ws::ws_handler
     ),
     info(
@@ -143,6 +148,9 @@ use utoipa_swagger_ui::SwaggerUi;
             crate::api::handlers::browsers::StartBrowserSessionResponse,
             crate::api::handlers::browsers::StopBrowserResponse,
             crate::api::handlers::browsers::SetDefaultBrowserResponse,
+            crate::api::handlers::runtimes::RuntimeReleaseItem,
+            crate::api::handlers::runtimes::ListRuntimesResponse,
+            crate::api::handlers::runtimes::RuntimeActionResponse,
             crate::api::handlers::browsers::ImportCsvPayload,
             crate::api::handlers::browsers::ImportCsvResponse,
             crate::api::handlers::browsers::SideloadExtensionPayload,
@@ -261,6 +269,10 @@ pub fn create_router(state: crate::AppState) -> Router {
             post(sideload_extension).put(update_browser_extensions),
         )
         .route("/browsers/import-csv", post(import_csv))
+        .route("/browsers/runtimes", get(list_runtimes))
+        .route("/browsers/runtimes/{version}/install", post(install_runtime))
+        .route("/browsers/runtimes/{version}/use", post(use_runtime))
+        .route("/browsers/runtimes/{version}", delete(delete_runtime))
         .route("/ws", get(ws_handler));
 
     let cors = CorsLayer::new()
