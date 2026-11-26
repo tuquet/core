@@ -60,8 +60,8 @@ pub async fn handle_profile_cloud(
             }
 
             println!();
-            let mut header_card = Card::new("CLOUD BROWSER FLEET");
-            header_card.with_badge(badge_online(&format!("{} FLEET PROFILES", browsers.len())));
+            let mut header_card = Card::new("CLOUD BROWSER PROFILES");
+            header_card.with_badge(badge_online(&format!("{} CLOUD PROFILES", browsers.len())));
             header_card.with_min_width(74);
             header_card.add_kv(
                 "Workspace ID",
@@ -434,9 +434,7 @@ pub async fn handle_profile_cloud(
                 ),
             );
             card.add_kv("SHA-256 Digest", &report.sha256_hash);
-            card.with_footer(
-                "Profile lease returned to cloud fleet. Ready for next automationted run.",
-            );
+            card.with_footer("Profile lease returned to cloud pool. Ready for next automated run.");
             card.print();
             println!();
             Ok(())
@@ -510,7 +508,7 @@ pub async fn handle_profile_push(
     {
         Some(c) => c,
         None => {
-            let err = "Desktop not enrolled with Cloud fleet. Run 'opn auth login' first.";
+            let err = "Device not enrolled with Cloud control plane. Run 'opn auth login' first.";
             if json {
                 println!("{}", serde_json::json!({ "success": false, "error": err }));
             } else {
@@ -687,7 +685,7 @@ pub async fn handle_profile_pull(
     {
         Some(c) => c,
         None => {
-            let err = "Desktop not enrolled with Cloud fleet. Run 'opn auth login' first.";
+            let err = "Device not enrolled with Cloud control plane. Run 'opn auth login' first.";
             if json {
                 println!("{}", serde_json::json!({ "success": false, "error": err }));
             } else {

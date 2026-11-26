@@ -5,8 +5,12 @@ use crate::core::browser::archive::{
 };
 use crate::core::browser::importer::{CsvImportError, import_csv_into_db_with_workspace};
 use crate::core::browser::manager::{BrowserManager, BrowserManagerOptions, browser_registry};
+use crate::core::browser::profile_config::{
+    generate_fingerprint_defaults, is_valid_id, normalize_extensions, normalize_tags,
+    push_antidetect_args, resolve_workspace_id, sanitize_startup_flags, validate_name,
+    validate_proxy_uri,
+};
 use crate::core::error::AutomationError;
-use crate::core::models::id::BrowserId;
 use crate::core::models::settings::AppSettings;
 use crate::infrastructure::db::{
     Browser, CreateBrowserRecord, DEFAULT_WORKSPACE_ID, FingerprintConfig, PatchBrowserRecord,
@@ -15,176 +19,8 @@ use axum::body::Bytes;
 use axum::extract::{Json, Path, Query, State};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::json;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use utoipa::{IntoParams, ToSchema};
-
-fn is_valid_id(id: &str) -> bool {
-    BrowserId::new(id).is_valid()
-}
-
-fn validate_name(name: &str) -> Result<String, AutomationError> {
-    let trimmed = name.trim();
-    if trimmed.is_empty() {
-        return Err(AutomationError::BadRequest(
-            "Browser profile name cannot be empty".to_string(),
-        ));
-    }
-    if trimmed.chars().count() > 100 {
-        return Err(AutomationError::BadRequest(
-            "Browser profile name must be at most 100 characters".to_string(),
-        ));
-    }
-    Ok(trimmed.to_string())
-}
-
-fn validate_proxy_uri(proxy: Option<&str>) -> Result<Option<String>, AutomationError> {
-    let Some(raw) = proxy else {
-        return Ok(None);
-    };
-    let trimmed = raw.trim();
-    if trimmed.is_empty() {
-        return Ok(None);
-    }
-    let lower = trimmed.to_ascii_lowercase();
-    let rest = lower
-        .strip_prefix("socks5h://")
-        .or_else(|| lower.strip_prefix("socks5://"))
-        .or_else(|| lower.strip_prefix("https://"))
-        .or_else(|| lower.strip_prefix("http://"))
-        .ok_or_else(|| {
-            AutomationError::BadRequest(
-                "Invalid proxy scheme (expected http://, https://, socks5://, or socks5h://)"
-                    .to_string(),
-            )
-        })?;
-    if rest.is_empty() || rest.starts_with('@') || rest.ends_with('@') {
-        return Err(AutomationError::BadRequest(
-            "Invalid proxy URI: missing host".to_string(),
-        ));
-    }
-    Ok(Some(trimmed.to_string()))
-}
-
-fn resolve_workspace_id(raw: Option<&str>) -> Result<String, AutomationError> {
-    match raw.map(str::trim).filter(|s| !s.is_empty()) {
-        Some(tid) => {
-            if !is_valid_id(tid) {
-                return Err(AutomationError::BadRequest(
-                    "Invalid workspaceId".to_string(),
-                ));
-            }
-            Ok(tid.to_string())
-        }
-        None => Ok(DEFAULT_WORKSPACE_ID.to_string()),
-    }
-}
-
-fn normalize_tags(tags: &[String]) -> Vec<String> {
-    let mut seen = HashSet::new();
-    let mut out = Vec::new();
-    for t in tags {
-        let clean = t.trim().to_ascii_lowercase();
-        if !clean.is_empty() && seen.insert(clean.clone()) {
-            out.push(clean);
-            if out.len() >= 20 {
-                break;
-            }
-        }
-    }
-    out
-}
-
-fn normalize_extensions(exts: &[String], enforce_automation: bool) -> Vec<String> {
-    let mut seen = HashSet::new();
-    let mut out = Vec::new();
-    for ext in exts {
-        let clean = ext.trim().to_string();
-        if !clean.is_empty() && seen.insert(clean.clone()) {
-            out.push(clean);
-        }
-    }
-    if enforce_automation && !seen.contains("automation") {
-        out.insert(0, "automation".to_string());
-    }
-    out
-}
-
-fn sanitize_startup_flags(flags: &[String]) -> Result<Vec<String>, AutomationError> {
-    const BLOCKED_PREFIXES: &[&str] = &[
-        "--no-sandbox",
-        "--disable-web-security",
-        "--user-data-dir",
-        "--remote-debugging-port",
-        "--load-extension",
-    ];
-    let mut out = Vec::new();
-    for raw in flags {
-        let trimmed = raw.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        if !trimmed.starts_with('-') {
-            return Err(AutomationError::BadRequest(format!(
-                "Startup flag '{}' must start with '-'",
-                trimmed
-            )));
-        }
-        let lower = trimmed.to_ascii_lowercase();
-        if BLOCKED_PREFIXES
-            .iter()
-            .any(|blocked| lower == *blocked || lower.starts_with(&format!("{blocked}=")))
-        {
-            return Err(AutomationError::BadRequest(format!(
-                "Startup flag '{}' is blocked for sandbox safety",
-                trimmed
-            )));
-        }
-        if !out.contains(&trimmed.to_string()) {
-            out.push(trimmed.to_string());
-        }
-    }
-    Ok(out)
-}
-
-fn generate_fingerprint_defaults(
-    name: &str,
-    input: Option<FingerprintConfig>,
-    proxy: Option<&str>,
-    timezone: Option<&str>,
-) -> FingerprintConfig {
-    let provided = input.unwrap_or_default();
-    let generated = browser::BrowserProfile::generate(
-        name,
-        provided.seed,
-        provided.os_platform.clone(),
-        provided.hardware_concurrency,
-        provided.device_memory_gb,
-        proxy.map(str::to_string),
-        timezone.map(str::to_string),
-        provided.lang.clone(),
-    );
-
-    FingerprintConfig {
-        seed: provided.seed.or(generated.fingerprint_seed),
-        os_platform: provided.os_platform.or(generated.os_platform),
-        os_version: provided.os_version.or(generated.os_version),
-        hardware_concurrency: provided
-            .hardware_concurrency
-            .or(generated.hardware_concurrency),
-        device_memory_gb: provided.device_memory_gb.or(generated.device_memory_gb),
-        screen_width: provided.screen_width.or(generated.screen_width),
-        screen_height: provided.screen_height.or(generated.screen_height),
-        device_pixel_ratio: provided.device_pixel_ratio.or(generated.device_pixel_ratio),
-        webrtc_mode: provided
-            .webrtc_mode
-            .or_else(|| Some("proxy_shielded".to_string())),
-        noise_level: provided
-            .noise_level
-            .or_else(|| Some("balanced".to_string())),
-        lang: provided.lang.or(generated.lang),
-        accept_lang: provided.accept_lang.or(generated.accept_lang),
-    }
-}
 
 fn deserialize_some<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
 where
@@ -265,10 +101,17 @@ fn build_browser_response(
     let extensions = p
         .extensions
         .unwrap_or_else(|| vec!["automation".to_string()]);
+    let source = if p.workspace_id.starts_with("local-") {
+        "local"
+    } else {
+        "cloud"
+    }
+    .to_string();
 
     BrowserResponse {
         id: p.id,
         workspace_id: p.workspace_id,
+        source,
         name: p.name,
         group_name: p.group_name,
         tags: p.tags,
@@ -333,6 +176,8 @@ pub struct BrowserResponse {
     pub id: String,
     /// Owning workspace identifier ('local-default', 'local-*', or Cloud workspace UUID)
     pub workspace_id: String,
+    /// Profile origin classification ('local' | 'cloud')
+    pub source: String,
     /// User-friendly profile label
     pub name: String,
     /// Logical group/folder name
@@ -527,6 +372,8 @@ pub struct GetBrowsersQuery {
     pub platform: Option<String>,
     /// Filter by group_name
     pub group: Option<String>,
+    /// Filter by origin source ('local' | 'cloud')
+    pub source: Option<String>,
 }
 
 #[utoipa::path(
@@ -561,7 +408,8 @@ pub async fn get_browsers(
         let has_secondary_filter = query.status.is_some()
             || query.has_proxy.is_some()
             || query.platform.is_some()
-            || query.group.is_some();
+            || query.group.is_some()
+            || query.source.is_some();
         let rows = db
             .browsers()
             .list_browsers(
@@ -624,6 +472,16 @@ pub async fn get_browsers(
                     return None;
                 }
             }
+            if let Some(ref src) = query.source {
+                let actual = if p.workspace_id.starts_with("local-") {
+                    "local"
+                } else {
+                    "cloud"
+                };
+                if !actual.eq_ignore_ascii_case(src.trim()) {
+                    return None;
+                }
+            }
             let sess = running_sessions.get(&p.id);
             Some(build_browser_response(p, &settings, is_online, sess, None))
         })
@@ -633,6 +491,7 @@ pub async fn get_browsers(
         || query.has_proxy.is_some()
         || query.platform.is_some()
         || query.group.is_some()
+        || query.source.is_some()
     {
         let start = query.offset.unwrap_or(0).min(response.len());
         response = response.into_iter().skip(start).collect();
@@ -1351,7 +1210,7 @@ pub async fn move_browser(
         )));
     }
 
-    let (moved, old_workspace, settings) = {
+    let (moved, old_workspace, settings, unlinked_tasks) = {
         let db = state.db.lock().await;
         let existing = db
             .browsers()
@@ -1363,6 +1222,14 @@ pub async fn move_browser(
         db.browsers()
             .move_browser_workspace(&id, &target_workspace)
             .map_err(|e| AutomationError::DatabaseError(e.to_string()))?;
+
+        let unlinked_tasks = if old_workspace == target_workspace {
+            0
+        } else {
+            db.tasks()
+                .unlink_browser_outside_workspace(&id, &target_workspace)
+                .map_err(|e| AutomationError::DatabaseError(e.to_string()))?
+        };
 
         let mut settings = db.settings().get_settings().unwrap_or_default();
         if old_workspace != target_workspace
@@ -1379,9 +1246,19 @@ pub async fn move_browser(
             .get_browser(&id)
             .map_err(|e| AutomationError::DatabaseError(e.to_string()))?
             .ok_or_else(|| AutomationError::NotFound(format!("Browser '{}' not found", id)))?;
-        (updated, old_workspace, settings)
+        (updated, old_workspace, settings, unlinked_tasks)
     };
 
+    if unlinked_tasks > 0 {
+        let _ = state.tx.send(
+            json!({
+                "type": "task_changed",
+                "action": "unlink_on_move",
+                "browserId": id,
+            })
+            .to_string(),
+        );
+    }
     emit_browser_event(
         &state,
         "move",
@@ -1801,52 +1678,6 @@ pub struct StartBrowserSessionResponse {
     pub user_data_dir: Option<String>,
 }
 
-fn push_antidetect_args(
-    args: &mut Vec<String>,
-    fp: &FingerprintConfig,
-    has_proxy: bool,
-    has_grid: bool,
-) {
-    if let Some(seed) = fp.seed {
-        args.push(format!("--fingerprint={}", seed));
-    }
-    if let Some(ref platform) = fp.os_platform
-        && !platform.trim().is_empty()
-    {
-        args.push(format!("--fingerprint-platform={}", platform.trim()));
-    }
-    if let Some(ref ver) = fp.os_version
-        && !ver.trim().is_empty()
-    {
-        args.push(format!("--fingerprint-platform-version={}", ver.trim()));
-    }
-    if let Some(cores) = fp.hardware_concurrency {
-        args.push(format!("--fingerprint-hardware-concurrency={}", cores));
-    }
-    if let Some(ram) = fp.device_memory_gb {
-        args.push(format!("--fingerprint-device-memory={}", ram));
-    }
-    if let Some(ref lang) = fp.lang
-        && !lang.trim().is_empty()
-    {
-        args.push(format!("--lang={}", lang.trim()));
-    }
-    if let Some(ref accept_lang) = fp.accept_lang
-        && !accept_lang.trim().is_empty()
-    {
-        args.push(format!("--accept-lang={}", accept_lang.trim()));
-    }
-    if !has_grid && let (Some(w), Some(h)) = (fp.screen_width, fp.screen_height) {
-        args.push(format!("--window-size={},{}", w, h));
-    }
-    if let Some(dpr) = fp.device_pixel_ratio {
-        args.push(format!("--force-device-scale-factor={:.2}", dpr));
-    }
-    if has_proxy && fp.webrtc_mode.as_deref() != Some("default") {
-        args.push("--disable-non-proxied-udp".to_string());
-    }
-}
-
 #[utoipa::path(
     tag = "Browsers",
     post,
@@ -2072,6 +1903,9 @@ pub async fn start_browser(
             "type": "browser_online",
             "id": browser_id,
             "workspaceId": workspace_id,
+            "pid": pid,
+            "debuggingPort": debugging_port,
+            "wsUrl": ws_url,
         })
         .to_string(),
     );

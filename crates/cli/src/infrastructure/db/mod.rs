@@ -4,14 +4,20 @@ use std::path::{Path, PathBuf};
 pub mod browsers;
 pub mod jobs;
 pub mod schema;
+pub mod seed;
 pub mod settings;
+pub mod tasks;
 
 pub use browsers::{
     Browser, CreateBrowserRecord, DEFAULT_WORKSPACE_ID, FingerprintConfig, PatchBrowserRecord,
     SqliteBrowserRepository,
 };
 pub use jobs::{JobDetails, JobHistoryItem, JobInfo, LogItem, SqliteJobRepository};
+pub use seed::{SeedSummary, reset_and_seed};
 pub use settings::SqliteSettingsRepository;
+pub use tasks::{
+    BulkUpdateTasksRecord, CreateTaskRecord, SqliteTaskRepository, TaskRecord, UpdateTaskRecord,
+};
 
 /// Resolve canonical persistent SQLite path (`~/.operon/data/operon.sqlite` for default
 /// automation dir, or `<data_dir>/operon.sqlite` when isolated via `--data-dir` / `DATA_DIR`).
@@ -130,6 +136,10 @@ impl AutomationDb {
 
     pub fn settings(&self) -> SqliteSettingsRepository<'_> {
         SqliteSettingsRepository::new(&self.conn)
+    }
+
+    pub fn tasks(&self) -> SqliteTaskRepository<'_> {
+        SqliteTaskRepository::new(&self.conn)
     }
 }
 

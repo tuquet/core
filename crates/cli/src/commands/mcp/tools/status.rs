@@ -19,7 +19,7 @@ pub async fn execute_status() -> Result<String, String> {
     } else {
         json!({
             "enrolled": false,
-            "message": "Desktop not enrolled with cloud fleet. Run 'opn login' to authenticate."
+            "message": "Device not enrolled with cloud control plane. Run 'opn login' to authenticate."
         })
     };
 

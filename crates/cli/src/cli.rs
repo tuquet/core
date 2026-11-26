@@ -571,7 +571,7 @@ pub enum WorkerSubcommands {
         #[arg(short, long)]
         log_level: Option<String>,
 
-        /// Enable Autonomous Cloud Fleet Mesh daemon mode
+        /// Enable Autonomous Cloud Sync daemon mode
         #[arg(short = 'c', long)]
         cloud: bool,
 
@@ -580,7 +580,7 @@ pub enum WorkerSubcommands {
         claim: bool,
     },
 
-    /// Run as an autonomous cloud fleet daemon polling and executing jobs
+    /// Run as an autonomous cloud daemon polling and executing jobs
     #[command(name = "daemon")]
     Worker {
         /// Target cloud profile ID or name to execute

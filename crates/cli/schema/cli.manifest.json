@@ -1332,8 +1332,8 @@
         "daemon"
       ],
       "pillar": "runner",
-      "title": "Cloud Fleet Mesh Worker",
-      "description": "Run as an autonomous cloud fleet daemon polling and executing jobs.",
+      "title": "Cloud Sync Daemon",
+      "description": "Run as an autonomous cloud daemon polling and executing jobs.",
       "options": [
         {
           "name": "cloud_profile",

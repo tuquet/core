@@ -19,7 +19,6 @@ $BinDir = Join-Path $OperonHome "bin"
 $TargetExe = Join-Path $BinDir "operon.exe"
 $AliasExe = Join-Path $BinDir "opn.exe"
 $TaskName = "OperonDaemon"
-$LegacyVbs = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup\OperonLocalBridge.vbs"
 
 Write-Host "[operon] Installing Operon CLI to $BinDir..." -ForegroundColor Cyan
 New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
@@ -89,10 +88,6 @@ if (($PathEntries | ForEach-Object { $_.TrimEnd('\') }) -notcontains $BinDir.Tri
     Write-Host "[operon] Added $BinDir to User PATH." -ForegroundColor Green
 } else {
     $env:Path = "$BinDir;$env:Path"
-}
-
-if (Test-Path $LegacyVbs) {
-    Remove-Item -Path $LegacyVbs -Force -ErrorAction SilentlyContinue
 }
 
 if (-not $NoDaemon) {

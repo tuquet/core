@@ -39,12 +39,49 @@ pub fn get_download_url(revision: &str) -> String {
     get_download_urls(revision).into_iter().next().unwrap()
 }
 
-/// Downloads and provisions the C++ Antidetect Engine from the curated manifest with SHA256 integrity
+/// Real-time progress snapshot emitted while downloading and extracting a browser driver.
+#[derive(Debug, Clone)]
+pub struct DownloadProgressEvent {
+    pub version: String,
+    pub stage: &'static str,
+    pub percent: u8,
+    pub downloaded_bytes: u64,
+    pub total_bytes: u64,
+}
+
+fn compute_download_percent(downloaded: u64, total: u64) -> u8 {
+    if total == 0 {
+        return 10;
+    }
+    let ratio = (downloaded as f64 / total as f64).clamp(0.0, 1.0);
+    (5.0 + ratio * 80.0).round() as u8
+}
+
+/// Downloads and provisions the C++ Antidetect Engine without a progress callback.
 pub async fn download_stealth_runtime(force: bool, query: Option<&str>) -> Result<String> {
+    download_stealth_runtime_with_progress(force, query, |_| {}).await
+}
+
+/// Downloads and provisions the C++ Antidetect Engine while streaming byte & stage progress.
+pub async fn download_stealth_runtime_with_progress<F>(
+    force: bool,
+    query: Option<&str>,
+    mut on_progress: F,
+) -> Result<String>
+where
+    F: FnMut(DownloadProgressEvent) + Send,
+{
     use sha2::{Digest, Sha256};
     use tokio::io::AsyncWriteExt;
 
     let target_query = query.unwrap_or("lts");
+    on_progress(DownloadProgressEvent {
+        version: target_query.to_string(),
+        stage: "downloading",
+        percent: 5,
+        downloaded_bytes: 0,
+        total_bytes: 0,
+    });
     let manifest = crate::manifest::fetch_manifest(false).await?;
     let release = manifest.find_release(target_query).ok_or_else(|| {
         anyhow!(
@@ -151,11 +188,22 @@ pub async fn download_stealth_runtime(force: bool, query: Option<&str>) -> Resul
         ));
     }
 
-    let total_bytes = response.content_length().unwrap_or(asset.size);
+    let total_bytes = response
+        .content_length()
+        .filter(|&len| len > 0)
+        .unwrap_or(asset.size);
     let mut downloaded_bytes: u64 = 0;
     let mut stream = response.bytes_stream();
     let mut last_reported = std::time::Instant::now();
     let mut hasher = Sha256::new();
+
+    on_progress(DownloadProgressEvent {
+        version: release.version.clone(),
+        stage: "downloading",
+        percent: 5,
+        downloaded_bytes: 0,
+        total_bytes,
+    });
 
     while let Some(chunk_res) = stream.next().await {
         let chunk = chunk_res?;
@@ -163,7 +211,7 @@ pub async fn download_stealth_runtime(force: bool, query: Option<&str>) -> Resul
         hasher.update(&chunk);
         downloaded_bytes += chunk.len() as u64;
 
-        if last_reported.elapsed().as_millis() >= 300
+        if last_reported.elapsed().as_millis() >= 250
             || (total_bytes > 0 && downloaded_bytes >= total_bytes)
         {
             let pct = if total_bytes > 0 {
@@ -171,6 +219,13 @@ pub async fn download_stealth_runtime(force: bool, query: Option<&str>) -> Resul
             } else {
                 0.0
             };
+            on_progress(DownloadProgressEvent {
+                version: release.version.clone(),
+                stage: "downloading",
+                percent: compute_download_percent(downloaded_bytes, total_bytes),
+                downloaded_bytes,
+                total_bytes,
+            });
             print!(
                 "\r[StealthDownloader] {:>5.1}% ({:.1} MB / {:.1} MB)...",
                 pct.min(100.0),
@@ -205,6 +260,13 @@ pub async fn download_stealth_runtime(force: bool, query: Option<&str>) -> Resul
     }
 
     println!("[StealthDownloader] Extracting archive...");
+    on_progress(DownloadProgressEvent {
+        version: release.version.clone(),
+        stage: "extracting",
+        percent: 90,
+        downloaded_bytes,
+        total_bytes,
+    });
     let archive_clone = temp_archive_path.clone();
     let temp_extract = runtimes_root.join(format!("temp_extract_{}", release.version));
     let _ = std::fs::remove_dir_all(&temp_extract);
@@ -296,6 +358,13 @@ pub async fn download_stealth_runtime(force: bool, query: Option<&str>) -> Resul
         release.version,
         effective_exe.display()
     );
+    on_progress(DownloadProgressEvent {
+        version: release.version.clone(),
+        stage: "ready",
+        percent: 100,
+        downloaded_bytes,
+        total_bytes,
+    });
     Ok(effective_exe.to_string_lossy().to_string())
 }
 

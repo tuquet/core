@@ -11,7 +11,7 @@ pub enum AuthGuardError {
     Io(String),
 }
 
-/// Enforces that the desktop is authenticated with Cloud fleet credentials.
+/// Enforces that the device is authenticated with Cloud credentials.
 /// If not logged in, it prints a Google/AGY-standard notification card and returns an error.
 pub async fn require_auth(command_context: &str) -> Result<DeviceCredentials, AuthGuardError> {
     let config = AppConfig::load();

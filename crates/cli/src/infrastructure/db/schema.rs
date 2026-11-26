@@ -8,6 +8,8 @@ pub fn init_db(conn: &Connection) -> Result<()> {
         r#"
         CREATE TABLE IF NOT EXISTS jobs (
             id TEXT PRIMARY KEY,
+            browser_id TEXT REFERENCES browsers(id) ON DELETE SET NULL,
+            task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
             name TEXT NOT NULL,
             data TEXT NOT NULL, -- JSON
             options TEXT, -- JSON
@@ -44,6 +46,25 @@ pub fn init_db(conn: &Connection) -> Result<()> {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS tasks (
+            id TEXT PRIMARY KEY,
+            workspace_id TEXT NOT NULL DEFAULT 'local-default',
+            browser_id TEXT REFERENCES browsers(id) ON DELETE SET NULL,
+            title TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'todo',
+            label TEXT NOT NULL DEFAULT 'feature',
+            priority TEXT NOT NULL DEFAULT 'medium',
+            assignee TEXT NOT NULL DEFAULT 'linh',
+            favorite INTEGER NOT NULL DEFAULT 0,
+            progress INTEGER NOT NULL DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_tasks_workspace ON tasks(workspace_id);
+        CREATE INDEX IF NOT EXISTS idx_tasks_browser ON tasks(browser_id);
+        CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 
         CREATE TABLE IF NOT EXISTS system_settings (
             key TEXT PRIMARY KEY,
@@ -103,6 +124,38 @@ pub fn init_db(conn: &Connection) -> Result<()> {
 
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_browsers_workspace ON browsers(workspace_id)",
+        [],
+    )?;
+
+    let mut jobs_stmt = conn.prepare("PRAGMA table_info(jobs)")?;
+    let job_cols = jobs_stmt
+        .query_map([], |row| row.get::<_, String>(1))?
+        .filter_map(Result::ok)
+        .collect::<Vec<String>>();
+
+    let job_migrations = [
+        (
+            "browser_id",
+            "ALTER TABLE jobs ADD COLUMN browser_id TEXT REFERENCES browsers(id) ON DELETE SET NULL",
+        ),
+        (
+            "task_id",
+            "ALTER TABLE jobs ADD COLUMN task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL",
+        ),
+    ];
+
+    for (col, ddl) in job_migrations {
+        if !job_cols.iter().any(|c| c == col) {
+            conn.execute(ddl, [])?;
+        }
+    }
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_jobs_browser ON jobs(browser_id)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_jobs_task ON jobs(task_id)",
         [],
     )?;
 

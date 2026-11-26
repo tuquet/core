@@ -1,11 +1,12 @@
 pub mod browsers;
+pub mod drivers;
 pub mod health;
 pub mod history;
 pub mod jobs;
 pub mod lint;
-pub mod runtimes;
 pub mod secrets;
 pub mod settings;
 pub mod sse;
 pub mod system;
+pub mod tasks;
 pub mod ws;

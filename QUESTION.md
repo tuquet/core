@@ -2,7 +2,7 @@
 
 > **Tài liệu:** `QUESTION.md`  
 > **Người thực hiện:** Chuyên gia Kiến trúc Browser Automation & Antidetect Fingerprint (Đóng vai)  
-> **Hệ quy chiếu thẩm định:** Hệ thống Multi-Workspace Enterprise, Chống Fraud & Bot Detection (Cloudflare Turnstile, DataDome, Akamai, Kasada, Fingerprint.com, CreepJS), Khả năng cô lập & mở rộng trên Worker Fleet.  
+> **Hệ quy chiếu thẩm định:** Hệ thống Multi-Workspace Enterprise, Chống Fraud & Bot Detection (Cloudflare Turnstile, DataDome, Akamai, Kasada, Fingerprint.com, CreepJS), Khả năng cô lập & mở rộng trên Distributed Device Nodes.  
 > **Quy ước trạng thái đối ứng:**
 > - `[ĐÃ CÓ TRONG CODE]`: Kèm đường dẫn file và phân tích logic code hiện tại.
 > - `[CHƯA CÓ / ĐANG THIẾU]`: Nêu rõ khoảng trống kiến trúc thực tế của codebase.
@@ -135,7 +135,7 @@
 * **Đối ứng code hiện tại:**
   - `[ĐÃ CÓ TRONG CODE]`:
     - Local Node: Kiểm tra qua file PID session tracker [`find_active_session()`](file:///C:/Users/ndtu6/Repository/operon/crates/cli/src/commands/browser/launcher.rs#L65). Nếu profile đang chạy, từ chối mở instance thứ hai trừ khi có cờ `--force`.
-    - Cloud Fleet: Bảng `browsers.active_leases` trong Supabase sử dụng RPC có thời hạn lease (`lease_expires_at`) và heartbeat tự động gia hạn. Worker phải claim lease thành công mới được tải và giải nén profile.
+    - Cloud Sync: Bảng `browsers.active_leases` trong Supabase sử dụng RPC có thời hạn lease (`lease_expires_at`) và heartbeat tự động gia hạn. Daemon phải claim lease thành công mới được tải và giải nén profile.
 
 ---
 

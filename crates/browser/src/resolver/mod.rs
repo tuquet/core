@@ -13,7 +13,8 @@ pub use detector::{
     detect_host_browsers, detect_version_from_dir, get_runtime_status, list_installed_runtimes,
 };
 pub use downloader::{
-    download_chromium_runtime, download_stealth_runtime, get_download_url, get_download_urls,
+    DownloadProgressEvent, download_chromium_runtime, download_stealth_runtime,
+    download_stealth_runtime_with_progress, get_download_url, get_download_urls,
     resolve_executable_path,
 };
 pub use extractor::unpack_archive_file;

@@ -44,7 +44,7 @@ pub async fn handle(command: AutomationSubcommands) -> Result<(), Box<dyn std::e
                 ));
             }
             if let Some(ref target_cloud) = cloud_profile {
-                crate::infrastructure::cloud_fleet::CloudFleetOrchestrator::run_autonomous_cloud_session(
+                crate::infrastructure::cloud_profiles::CloudProfileOrchestrator::run_autonomous_cloud_session(
                     target_cloud,
                     target_workflow,
                     workflow_json,

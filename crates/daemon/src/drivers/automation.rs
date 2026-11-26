@@ -196,8 +196,50 @@ impl AutomaDriver {
             Err(e) => return Some(Err(format!("Failed to connect CDP session: {}", e))),
         };
 
+        let mut secrets = std::collections::BTreeMap::new();
+        match crate::core::secrets::SecretStore::new().load_all() {
+            Ok(map) => secrets = map,
+            Err(e) => ctx.emit_log(
+                LogChannel::System,
+                &format!("Secret Store unavailable: {}", e),
+            ),
+        }
+
+        let workflow_path = if wf_cfg.path.is_empty() {
+            None
+        } else {
+            Some(wf_cfg.path)
+        };
+
+        Some(
+            Self::run_workflow_with_backend(
+                job_id,
+                graph,
+                cdp_session,
+                wf_cfg.variables,
+                secrets,
+                workflow_path,
+                ctx,
+                start_time,
+            )
+            .await,
+        )
+    }
+
+    /// Executes a parsed workflow graph against an injected `BrowserBackend` and secret map.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn run_workflow_with_backend(
+        job_id: &str,
+        graph: crate::drivers::cdp::WorkflowGraph,
+        backend: std::sync::Arc<dyn crate::drivers::cdp::BrowserBackend>,
+        variables: Option<std::collections::HashMap<String, serde_json::Value>>,
+        secrets: std::collections::BTreeMap<String, String>,
+        workflow_path: Option<String>,
+        ctx: &ExecutionContext,
+        start_time: Instant,
+    ) -> Result<JobResult, String> {
         let mut initial_state = crate::drivers::cdp::ExecutionState::new();
-        if let Some(vars) = wf_cfg.variables {
+        if let Some(vars) = variables {
             for (k, v) in vars {
                 initial_state.set_variable(&k, v);
             }
@@ -212,25 +254,14 @@ impl AutomaDriver {
             }
         }
 
-        // Seed secrets from the local encrypted Secret Store (`{{secrets@name}}`), and
+        // Seed secrets from the caller-supplied store (`{{secrets@name}}`), and
         // register each value with the masker so it can never appear in the logs.
-        {
-            let store = crate::core::secrets::SecretStore::new();
-            match store.load_all() {
-                Ok(map) => {
-                    for (k, v) in &map {
-                        initial_state.set_secret(k, serde_json::Value::String(v.clone()));
-                        ctx.masker.add_custom_secret(v.clone());
-                    }
-                }
-                Err(e) => ctx.emit_log(
-                    LogChannel::System,
-                    &format!("Secret Store unavailable: {}", e),
-                ),
-            }
+        for (k, v) in secrets {
+            ctx.masker.add_custom_secret(v.clone());
+            initial_state.set_secret(&k, serde_json::Value::String(v));
         }
 
-        let executor = crate::drivers::cdp::WorkflowDagExecutor::new(graph, cdp_session);
+        let executor = crate::drivers::cdp::WorkflowDagExecutor::new(graph, backend);
         match executor
             .execute(Some(initial_state), ctx.cancel_token.clone())
             .await
@@ -256,11 +287,7 @@ impl AutomaDriver {
                     .collect();
 
                 let out = AutomaJobOutput {
-                    workflow_id: if wf_cfg.path.is_empty() {
-                        None
-                    } else {
-                        Some(wf_cfg.path)
-                    },
+                    workflow_id: workflow_path,
                     status: "completed".to_string(),
                     duration_ms,
                     tables: Some(tables),
@@ -269,24 +296,24 @@ impl AutomaDriver {
                     artifacts: None,
                 };
                 let out_json = serde_json::to_value(out).ok();
-                Some(Ok(JobResult::success(
+                Ok(JobResult::success(
                     job_id.to_string(),
                     duration_ms,
                     out_json,
-                )))
+                ))
             }
             Err(e) if e.contains("cancelled") => {
                 let duration_ms = start_time.elapsed().as_millis() as u64;
-                Some(Ok(JobResult::cancelled(job_id.to_string(), duration_ms)))
+                Ok(JobResult::cancelled(job_id.to_string(), duration_ms))
             }
             Err(e) => {
                 let duration_ms = start_time.elapsed().as_millis() as u64;
-                Some(Ok(JobResult::failure(
+                Ok(JobResult::failure(
                     job_id.to_string(),
                     Some(1),
                     duration_ms,
                     e,
-                )))
+                ))
             }
         }
     }
@@ -560,6 +587,67 @@ mod tests {
         assert_eq!(
             driver.resolve_automa_bin("/custom/bin/runner"),
             "/custom/bin/runner"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_run_workflow_with_backend_uses_injected_backend_and_masks_secrets() {
+        let wf = serde_json::json!({
+            "name": "di-test",
+            "drawflow": {
+                "nodes": [
+                    {
+                        "id": "1",
+                        "label": "trigger",
+                        "data": {
+                            "parameters": [
+                                { "name": "greeting", "defaultValue": "hello" }
+                            ]
+                        }
+                    },
+                    {
+                        "id": "2",
+                        "label": "new-tab",
+                        "data": { "url": "https://example.com/{{variables.greeting}}" }
+                    }
+                ],
+                "edges": [
+                    { "source": "1", "target": "2", "sourceHandle": "1-output-1", "targetHandle": "2-input-1" }
+                ]
+            }
+        });
+        let graph = crate::drivers::cdp::WorkflowGraph::from_json(&wf).unwrap();
+        let backend =
+            std::sync::Arc::new(crate::drivers::cdp::workflow::tests::InMemoryMockBackend::new());
+        let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+        let masker = std::sync::Arc::new(crate::core::masker::SecretMasker::new());
+        let ctx = ExecutionContext::new(
+            "job-di-1",
+            tx,
+            masker.clone(),
+            tokio_util::sync::CancellationToken::new(),
+        );
+        let mut secrets = std::collections::BTreeMap::new();
+        secrets.insert("api_key".to_string(), "super-secret-token-123".to_string());
+
+        let result = AutomaDriver::run_workflow_with_backend(
+            "job-di-1",
+            graph,
+            backend.clone(),
+            None,
+            secrets,
+            None,
+            &ctx,
+            Instant::now(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(result.status, crate::protocol::schema::JobStatus::Completed);
+        assert_eq!(*backend.url.lock().unwrap(), "https://example.com/hello");
+        assert_eq!(
+            masker.mask("leak super-secret-token-123"),
+            "leak ***MASKED***"
         );
     }
 }

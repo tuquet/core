@@ -83,7 +83,7 @@ pub async fn login(
     if !format.is_json() && is_tty {
         clack_intro(
             "opn auth login",
-            &format!("Cloud Authentication & Fleet Pairing • {cloud_url}"),
+            &format!("Cloud Authentication & Device Pairing • {cloud_url}"),
         );
     }
 
@@ -412,7 +412,7 @@ pub async fn login(
         }
     }
 
-    // 4. Enroll Desktop Device with Cloud Fleet
+    // 4. Enroll Device with Cloud Control Plane
     let enrollment_token = resolved_workspace_slug
         .as_deref()
         .or(resolved_workspace_id.as_deref())
@@ -423,7 +423,7 @@ pub async fn login(
     let bearer_jwt = maybe_session.as_ref().map(|(tok, _, _)| tok.as_str());
 
     let sp = if !format.is_json() {
-        Some(ClackSpinner::start("Pairing desktop with Cloud Fleet..."))
+        Some(ClackSpinner::start("Pairing device with Cloud..."))
     } else {
         None
     };
@@ -564,7 +564,7 @@ fn present_login_success(
             "Endpoint",
             device_creds.cloud_url.as_deref().unwrap_or(cloud_url),
         );
-        card.with_footer("Desktop successfully paired with Cloud fleet");
+        card.with_footer("Device successfully paired with Cloud");
 
         println!();
         card.print();
@@ -693,14 +693,14 @@ fn present_whoami(
         let payload = serde_json::json!({
             "enrolled": false,
             "authenticated": false,
-            "message": "Desktop not enrolled with cloud fleet. Run 'opn auth login' to authenticate."
+            "message": "Device not enrolled with cloud control plane. Run 'opn auth login' to authenticate."
         });
 
         respond_with(format, &payload, |_| {
             let mut card = Card::new("CLOUD IDENTITY");
             card.with_badge(badge_offline("DISCONNECTED"));
             card.with_min_width(64);
-            card.add_line("Desktop not enrolled with cloud fleet.");
+            card.add_line("Device not enrolled with cloud control plane.");
             card.with_footer("Run 'opn auth login' to authenticate with Cloud");
             println!();
             card.print();

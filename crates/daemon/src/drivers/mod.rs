@@ -8,7 +8,7 @@ pub mod shell;
 use crate::core::masker::SecretMasker;
 use crate::protocol::schema::{DriverType, Job, JobId, JobResult, LogChannel, LogChunk};
 use async_trait::async_trait;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_util::sync::CancellationToken;
@@ -66,7 +66,7 @@ pub trait ExecutionDriver: Send + Sync {
 
 /// Registry holding active drivers
 pub struct DriverRegistry {
-    drivers: HashMap<String, Box<dyn ExecutionDriver>>,
+    drivers: BTreeMap<String, Box<dyn ExecutionDriver>>,
 }
 
 impl Default for DriverRegistry {
@@ -78,7 +78,7 @@ impl Default for DriverRegistry {
 impl DriverRegistry {
     pub fn new() -> Self {
         Self {
-            drivers: HashMap::new(),
+            drivers: BTreeMap::new(),
         }
     }
 
@@ -91,13 +91,67 @@ impl DriverRegistry {
     }
 
     pub fn find_for_job(&self, job: &Job) -> Option<&dyn ExecutionDriver> {
-        match &job.driver {
-            DriverType::Shell => self.get("shell"),
-            DriverType::Agent => self.get("agent"),
-            DriverType::Automa => self.get("automation"),
-            DriverType::Browser => self.get("browser"),
-            DriverType::Http => self.get("http"),
-            DriverType::Custom(name) => self.get(name),
+        if let Some(driver) = self
+            .drivers
+            .values()
+            .map(|b| b.as_ref())
+            .find(|d| d.can_handle(job))
+        {
+            return Some(driver);
         }
+        match &job.driver {
+            DriverType::Custom(name) => self.get(name),
+            _ => None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::protocol::schema::Job;
+
+    struct CustomEchoDriver;
+
+    #[async_trait]
+    impl ExecutionDriver for CustomEchoDriver {
+        fn name(&self) -> &'static str {
+            "custom-echo"
+        }
+        fn can_handle(&self, job: &Job) -> bool {
+            matches!(&job.driver, DriverType::Custom(n) if n == "echo-alias")
+        }
+        async fn execute(&self, job: Job, _ctx: ExecutionContext) -> Result<JobResult, String> {
+            Ok(JobResult::success(job.id, 0, None))
+        }
+    }
+
+    #[test]
+    fn find_for_job_respects_can_handle_and_custom_name() {
+        let mut registry = DriverRegistry::new();
+        registry.register(Box::new(CustomEchoDriver));
+
+        let aliased = Job {
+            id: "j1".to_string(),
+            driver: DriverType::Custom("echo-alias".to_string()),
+            payload: serde_json::json!({}),
+            cwd: None,
+            env: None,
+            timeout_ms: 1000,
+            created_at: None,
+        };
+        assert_eq!(
+            registry.find_for_job(&aliased).map(|d| d.name()),
+            Some("custom-echo")
+        );
+
+        let by_name = Job {
+            driver: DriverType::Custom("custom-echo".to_string()),
+            ..aliased
+        };
+        assert_eq!(
+            registry.find_for_job(&by_name).map(|d| d.name()),
+            Some("custom-echo")
+        );
     }
 }

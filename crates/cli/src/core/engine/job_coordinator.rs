@@ -125,7 +125,7 @@ impl JobCoordinator {
             );
         }
 
-        // Persist initial job record to SQLite database
+        // Persist initial job record to SQLite database (linking browser FK when profile exists)
         {
             let workflow_name = resolved
                 .data
@@ -133,8 +133,16 @@ impl JobCoordinator {
                 .and_then(|v| v.as_str())
                 .unwrap_or("Workflow");
             let db = state.db.lock().await;
-            let _ = db.jobs().create_job(
+            let linked_browser_id = db
+                .browsers()
+                .get_browser(browser_id.as_str())
+                .ok()
+                .flatten()
+                .map(|b| b.id);
+            let _ = db.jobs().create_job_with_links(
                 job_id.as_str(),
+                linked_browser_id.as_deref(),
+                None,
                 workflow_name,
                 &resolved.data,
                 &options_value,

@@ -76,7 +76,7 @@ pub async fn handle(
                         ("daemon", "Distributed Worker Daemon (daemon.schema.json)"),
                         (
                             "system",
-                            "Machine Identity & Cloud Fleet (system.schema.json)",
+                            "Machine Identity & Cloud Device Sync (system.schema.json)",
                         ),
                     ];
                     let opts: Vec<ClackOption> = services
