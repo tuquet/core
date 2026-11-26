@@ -4,6 +4,7 @@ use crate::api::handlers::browsers::{
     set_default_browser, sideload_extension, start_browser, stop_browser, unbind_browser,
     update_browser, update_browser_extensions,
 };
+use crate::api::handlers::drivers::{delete_driver, install_driver, list_drivers, use_driver};
 use crate::api::handlers::health::health;
 use crate::api::handlers::history::{clear_history, delete_history_item, get_history, get_logs};
 use crate::api::handlers::jobs::{
@@ -11,7 +12,6 @@ use crate::api::handlers::jobs::{
     submit_job, worker_sse,
 };
 use crate::api::handlers::lint::lint_workflow;
-use crate::api::handlers::runtimes::{delete_runtime, install_runtime, list_runtimes, use_runtime};
 use crate::api::handlers::secrets::{
     delete_secret, get_secrets, list_credentials, pull_secrets, push_secrets, rotate_secrets,
     set_secret,
@@ -19,12 +19,17 @@ use crate::api::handlers::secrets::{
 use crate::api::handlers::settings::{get_settings, patch_settings, update_settings};
 use crate::api::handlers::sse::sse;
 use crate::api::handlers::system::{
-    cloud_login, cloud_logout, desktop_auth_callback, desktop_auth_callback_post, get_cloud_status,
-    get_metrics, get_system_info, get_workspaces, kill_browsers, open_studio, start_desktop_auth,
-    switch_workspace, trigger_cloud_sync,
+    cloud_login, cloud_logout, desktop_auth_callback, desktop_auth_callback_post, get_ci_logs,
+    get_cloud_status, get_metrics, get_system_info, get_workspaces, kill_browsers, open_studio,
+    reset_db, start_desktop_auth, switch_workspace, trigger_cloud_sync,
+};
+use crate::api::handlers::tasks::{
+    batch_delete_tasks, bulk_update_tasks, create_task, delete_task, list_tasks, patch_task,
 };
 use crate::api::handlers::ws::ws_handler;
-use axum::{Router, response::IntoResponse, routing::delete, routing::get, routing::post};
+use axum::{
+    Router, response::IntoResponse, routing::delete, routing::get, routing::patch, routing::post,
+};
 use tower_http::cors::{Any, CorsLayer};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -50,6 +55,7 @@ use utoipa_swagger_ui::SwaggerUi;
         crate::api::handlers::system::kill_browsers,
         crate::api::handlers::system::open_studio,
         crate::api::handlers::system::get_metrics,
+        crate::api::handlers::system::get_ci_logs,
         crate::api::handlers::system::get_system_info,
         crate::api::handlers::system::get_cloud_status,
         crate::api::handlers::system::trigger_cloud_sync,
@@ -57,6 +63,7 @@ use utoipa_swagger_ui::SwaggerUi;
         crate::api::handlers::system::cloud_logout,
         crate::api::handlers::system::get_workspaces,
         crate::api::handlers::system::switch_workspace,
+        crate::api::handlers::system::reset_db,
         crate::api::handlers::system::start_desktop_auth,
         crate::api::handlers::system::desktop_auth_callback,
         crate::api::handlers::system::desktop_auth_callback_post,
@@ -89,10 +96,16 @@ use utoipa_swagger_ui::SwaggerUi;
         crate::api::handlers::browsers::update_browser_extensions,
         crate::api::handlers::browsers::auto_detect_browsers,
         crate::api::handlers::browsers::set_default_browser,
-        crate::api::handlers::runtimes::list_runtimes,
-        crate::api::handlers::runtimes::install_runtime,
-        crate::api::handlers::runtimes::use_runtime,
-        crate::api::handlers::runtimes::delete_runtime,
+        crate::api::handlers::drivers::list_drivers,
+        crate::api::handlers::drivers::install_driver,
+        crate::api::handlers::drivers::use_driver,
+        crate::api::handlers::drivers::delete_driver,
+        crate::api::handlers::tasks::list_tasks,
+        crate::api::handlers::tasks::create_task,
+        crate::api::handlers::tasks::patch_task,
+        crate::api::handlers::tasks::bulk_update_tasks,
+        crate::api::handlers::tasks::batch_delete_tasks,
+        crate::api::handlers::tasks::delete_task,
         crate::api::handlers::ws::ws_handler
     ),
     info(
@@ -124,8 +137,14 @@ use utoipa_swagger_ui::SwaggerUi;
             crate::api::handlers::system::CloudLoginResponse,
             crate::api::handlers::system::CloudLogoutResponse,
             crate::api::handlers::system::SystemMetricsResponse,
+            crate::api::handlers::system::CiCacheEntry,
+            crate::api::handlers::system::CiLogFileEntry,
+            crate::api::handlers::system::CiLogsResponse,
             crate::api::handlers::system::RunnerIdentityResponse,
             crate::api::handlers::system::SystemResponse,
+            crate::infrastructure::db::SeedSummary,
+            crate::api::handlers::system::ResetDbRequest,
+            crate::api::handlers::system::ResetDbResponse,
             crate::infrastructure::db::FingerprintConfig,
             crate::core::browser::importer::CsvImportError,
             crate::api::handlers::browsers::BrowserResponse,
@@ -148,9 +167,9 @@ use utoipa_swagger_ui::SwaggerUi;
             crate::api::handlers::browsers::StartBrowserSessionResponse,
             crate::api::handlers::browsers::StopBrowserResponse,
             crate::api::handlers::browsers::SetDefaultBrowserResponse,
-            crate::api::handlers::runtimes::RuntimeReleaseItem,
-            crate::api::handlers::runtimes::ListRuntimesResponse,
-            crate::api::handlers::runtimes::RuntimeActionResponse,
+            crate::api::handlers::drivers::DriverReleaseItem,
+            crate::api::handlers::drivers::ListDriversResponse,
+            crate::api::handlers::drivers::DriverActionResponse,
             crate::api::handlers::browsers::ImportCsvPayload,
             crate::api::handlers::browsers::ImportCsvResponse,
             crate::api::handlers::browsers::SideloadExtensionPayload,
@@ -170,6 +189,12 @@ use utoipa_swagger_ui::SwaggerUi;
         crate::api::handlers::secrets::CredentialList,
         crate::api::handlers::secrets::SetSecretRequest,
         crate::api::handlers::secrets::SecretOpResult,
+            crate::infrastructure::db::TaskRecord,
+            crate::api::handlers::tasks::CreateTaskRequest,
+            crate::api::handlers::tasks::PatchTaskRequest,
+            crate::api::handlers::tasks::BulkUpdateTasksRequest,
+            crate::api::handlers::tasks::BatchDeleteTasksRequest,
+            crate::api::handlers::tasks::TaskMutationCountResponse,
             crate::core::models::settings::AppSettings,
             crate::core::models::settings::UpdateAppSettingsRequest
         )
@@ -177,6 +202,7 @@ use utoipa_swagger_ui::SwaggerUi;
     tags(
         (name = "Health", description = "System health check endpoints"),
         (name = "Jobs", description = "Workflow job dispatching and execution telemetry endpoints"),
+        (name = "Tasks", description = "SQLite automation tasks linked to browser profiles"),
         (name = "Browsers", description = "Chromium instance lifecycle and profile isolation endpoints"),
         (name = "History", description = "Execution audit history and log queries"),
         (name = "Storage", description = "Local SQLite variables, tables, and workflow storage endpoints"),
@@ -204,6 +230,7 @@ pub fn create_router(state: crate::AppState) -> Router {
         .route("/events", get(sse))
         .route("/system/studio/session", post(open_studio))
         .route("/system/metrics", get(get_metrics))
+        .route("/system/ci-logs", get(get_ci_logs))
         .route("/system/info", get(get_system_info))
         .route("/system/cloud/status", get(get_cloud_status))
         .route("/system/cloud/sync", post(trigger_cloud_sync))
@@ -216,6 +243,7 @@ pub fn create_router(state: crate::AppState) -> Router {
         )
         .route("/system/workspaces", get(get_workspaces))
         .route("/system/workspaces/switch", post(switch_workspace))
+        .route("/system/db/reset", post(reset_db))
         .route(
             "/system/settings",
             get(get_settings).put(update_settings).patch(patch_settings),
@@ -269,13 +297,14 @@ pub fn create_router(state: crate::AppState) -> Router {
             post(sideload_extension).put(update_browser_extensions),
         )
         .route("/browsers/import-csv", post(import_csv))
-        .route("/browsers/runtimes", get(list_runtimes))
-        .route(
-            "/browsers/runtimes/{version}/install",
-            post(install_runtime),
-        )
-        .route("/browsers/runtimes/{version}/use", post(use_runtime))
-        .route("/browsers/runtimes/{version}", delete(delete_runtime))
+        .route("/browsers/drivers", get(list_drivers))
+        .route("/browsers/drivers/{version}/install", post(install_driver))
+        .route("/browsers/drivers/{version}/use", post(use_driver))
+        .route("/browsers/drivers/{version}", delete(delete_driver))
+        .route("/tasks", get(list_tasks).post(create_task))
+        .route("/tasks/bulk", post(bulk_update_tasks))
+        .route("/tasks/batch/delete", post(batch_delete_tasks))
+        .route("/tasks/{id}", patch(patch_task).delete(delete_task))
         .route("/ws", get(ws_handler));
 
     let cors = CorsLayer::new()
@@ -444,8 +473,166 @@ mod tests {
         let json_str = json_result.unwrap();
         assert!(json_str.contains("CLI & Core Gateway API"));
         assert!(json_str.contains("/api/v1/system/workspaces"));
+        assert!(json_str.contains("/api/v1/system/ci-logs"));
         assert!(json_str.contains("/api/v1/system/cloud/auth/start"));
         assert!(json_str.contains("/api/v1/auth/callback"));
         assert!(json_str.contains("/api/v1/browsers"));
+        assert!(json_str.contains("/api/v1/tasks"));
+    }
+
+    #[tokio::test]
+    async fn test_tasks_and_browsers_sqlite_fk_roundtrip() {
+        let state = create_test_state();
+        let app = create_router(state);
+
+        use axum::http::{Request, StatusCode};
+        use tower::ServiceExt;
+
+        // 1. Create browser profile
+        let create_browser_req = Request::builder()
+            .method("POST")
+            .uri("/api/v1/browsers")
+            .header("Content-Type", "application/json")
+            .body(axum::body::Body::from(
+                serde_json::json!({ "id": "prf_task_link", "name": "Linked Browser" }).to_string(),
+            ))
+            .unwrap();
+        let res = app.clone().oneshot(create_browser_req).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+
+        // 2. Reject task referencing unknown browser
+        let bad_task_req = Request::builder()
+            .method("POST")
+            .uri("/api/v1/tasks")
+            .header("Content-Type", "application/json")
+            .body(axum::body::Body::from(
+                serde_json::json!({ "title": "Bad", "browserId": "prf_nope" }).to_string(),
+            ))
+            .unwrap();
+        let res_bad = app.clone().oneshot(bad_task_req).await.unwrap();
+        assert_eq!(res_bad.status(), StatusCode::NOT_FOUND);
+
+        // 3. Create task linked to browser and verify joined browserName
+        let create_task_req = Request::builder()
+            .method("POST")
+            .uri("/api/v1/tasks")
+            .header("Content-Type", "application/json")
+            .body(axum::body::Body::from(
+                serde_json::json!({
+                    "id": "TASK-DB-1",
+                    "title": "Sync cookies",
+                    "browserId": "prf_task_link"
+                })
+                .to_string(),
+            ))
+            .unwrap();
+        let res_task = app.clone().oneshot(create_task_req).await.unwrap();
+        assert_eq!(res_task.status(), StatusCode::OK);
+        let body_bytes = axum::body::to_bytes(res_task.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let created: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+        assert_eq!(created["browserId"], "prf_task_link");
+        assert_eq!(created["browserName"], "Linked Browser");
+
+        // 4. Reject cross-workspace task link (409 Conflict)
+        let cross_ws_req = Request::builder()
+            .method("POST")
+            .uri("/api/v1/tasks")
+            .header("Content-Type", "application/json")
+            .body(axum::body::Body::from(
+                serde_json::json!({
+                    "title": "Cross-workspace leak",
+                    "workspaceId": "ws_other",
+                    "browserId": "prf_task_link"
+                })
+                .to_string(),
+            ))
+            .unwrap();
+        let res_cross = app.clone().oneshot(cross_ws_req).await.unwrap();
+        assert_eq!(res_cross.status(), StatusCode::CONFLICT);
+
+        // 5. Move browser to ws_other -> task in old workspace is unlinked (browserId = null)
+        let move_req = Request::builder()
+            .method("POST")
+            .uri("/api/v1/browsers/prf_task_link/move")
+            .header("Content-Type", "application/json")
+            .body(axum::body::Body::from(
+                serde_json::json!({ "targetWorkspaceId": "ws_other" }).to_string(),
+            ))
+            .unwrap();
+        let res_move = app.clone().oneshot(move_req).await.unwrap();
+        assert_eq!(res_move.status(), StatusCode::OK);
+
+        let after_move_req = Request::builder()
+            .method("GET")
+            .uri("/api/v1/tasks")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let res_after_move = app.clone().oneshot(after_move_req).await.unwrap();
+        let move_bytes = axum::body::to_bytes(res_after_move.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let moved_list: Vec<serde_json::Value> = serde_json::from_slice(&move_bytes).unwrap();
+        assert_eq!(moved_list.len(), 1);
+        assert!(moved_list[0]["browserId"].is_null());
+
+        // 6. Re-link in ws_other via PATCH then delete browser -> ON DELETE SET NULL
+        let patch_req = Request::builder()
+            .method("PATCH")
+            .uri("/api/v1/tasks/TASK-DB-1")
+            .header("Content-Type", "application/json")
+            .body(axum::body::Body::from(
+                serde_json::json!({ "browserId": "prf_task_link" }).to_string(),
+            ))
+            .unwrap();
+        let res_patch_cross = app.clone().oneshot(patch_req).await.unwrap();
+        assert_eq!(res_patch_cross.status(), StatusCode::CONFLICT);
+
+        let del_browser_req = Request::builder()
+            .method("DELETE")
+            .uri("/api/v1/browsers/prf_task_link")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let res_del = app.clone().oneshot(del_browser_req).await.unwrap();
+        assert_eq!(res_del.status(), StatusCode::OK);
+
+        let list_tasks_req = Request::builder()
+            .method("GET")
+            .uri("/api/v1/tasks")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let res_list = app.oneshot(list_tasks_req).await.unwrap();
+        assert_eq!(res_list.status(), StatusCode::OK);
+        let list_bytes = axum::body::to_bytes(res_list.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let list: Vec<serde_json::Value> = serde_json::from_slice(&list_bytes).unwrap();
+        assert_eq!(list.len(), 1);
+        assert!(list[0]["browserId"].is_null());
+        assert!(list[0]["browserName"].is_null());
+    }
+
+    #[tokio::test]
+    async fn test_get_ci_logs_endpoint_returns_json() {
+        let state = create_test_state();
+        let app = create_router(state);
+
+        use axum::http::{Request, StatusCode};
+        use tower::ServiceExt;
+
+        let req = Request::builder()
+            .method("GET")
+            .uri("/api/v1/system/ci-logs")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let res = app.oneshot(req).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let payload: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert!(payload["cache"].is_object());
+        assert!(payload["files"].is_array());
     }
 }

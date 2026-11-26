@@ -29,7 +29,7 @@ pub mod pillars {
     pub const PILLAR_GATEWAY: &str = "gateway";
     pub const PILLAR_BROWSER: &str = "browser";
     pub const PILLAR_AUTOMATION: &str = "automation";
-    pub const PILLAR_WORKER: &str = "daemon";
+    pub const PILLAR_DAEMON: &str = "daemon";
     pub const PILLAR_CLOUD: &str = "cloud";
     pub const PILLAR_SYSTEM: &str = "system";
 
@@ -37,7 +37,7 @@ pub mod pillars {
         PILLAR_GATEWAY,
         PILLAR_BROWSER,
         PILLAR_AUTOMATION,
-        PILLAR_WORKER,
+        PILLAR_DAEMON,
         PILLAR_CLOUD,
         PILLAR_SYSTEM,
     ];

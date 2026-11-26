@@ -47,7 +47,7 @@ This document codifies the non-negotiable architectural boundaries, system invar
 - **Principle:** Task distribution across distributed daemon nodes operates via non-blocking, lease-bounded database transactions.
 - **Enforcement:**
   - Workers acquire jobs atomically using row-level locking (`FOR UPDATE SKIP LOCKED`).
-  - Every running job holds a strictly bounded lease (`lease_expires_at`). If a node disconnects, crashes, or stalls, the orchestrator automatically reaps and releases the job back to the fleet without orphan states or double-execution.
+  - Every running job holds a strictly bounded lease (`lease_expires_at`). If a node disconnects, crashes, or stalls, the orchestrator automatically reaps and releases the job back to the queue without orphan states or double-execution.
 
 ### Invariant M2: Deterministic Antidetect Sandbox Isolation
 - **Principle:** Browser profiles running automation must guarantee zero mutual interference and zero hardware fingerprint leaks.
@@ -68,7 +68,7 @@ This document codifies the non-negotiable architectural boundaries, system invar
 ### Invariant D2: Dual-Plane Connection Multiplexing
 - **Principle:** High-frequency edge daemon nodes must not exhaust relational database connection limits.
 - **Enforcement:**
-  - Distributed fleet workers must connect exclusively via the Transaction Pooler (Port 6543 / Supavisor).
+  - Distributed daemon devices must connect exclusively via the Transaction Pooler (Port 6543 / Supavisor).
   - Direct Session access (Port 5432) is restricted exclusively to DDL schema migrations, database seeding, and administrative operators.
 
 ### Invariant D3: Immutable Migration Discipline

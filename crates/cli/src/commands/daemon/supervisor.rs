@@ -20,7 +20,7 @@ pub fn get_log_file_path(data_dir: &str) -> PathBuf {
         .join(crate::constants::FILE_WORKER_LOG)
 }
 
-pub fn is_valid_worker_name(raw_name: &str) -> bool {
+pub fn is_valid_daemon_name(raw_name: &str) -> bool {
     let name = raw_name.trim().to_lowercase();
     let base = name.strip_suffix(".exe").unwrap_or(&name);
     base == "operon" || base == "opn"
@@ -176,7 +176,7 @@ pub async fn stop_daemon(force: bool) -> Result<(), Box<dyn std::error::Error>> 
             continue;
         }
         let name = proc.name().to_string_lossy();
-        if is_valid_worker_name(&name) {
+        if is_valid_daemon_name(&name) {
             let cmd = proc
                 .cmd()
                 .iter()
@@ -236,7 +236,7 @@ pub async fn stop_daemon(force: bool) -> Result<(), Box<dyn std::error::Error>> 
         };
 
         let raw_name = proc.name().to_string_lossy();
-        if !is_valid_worker_name(&raw_name) {
+        if !is_valid_daemon_name(&raw_name) {
             tracing::warn!(
                 "Stale PID {} detected: process name '{}' does not match opn. Skipping kill.",
                 pid,
@@ -530,8 +530,8 @@ pub async fn run_server(
             &config.data_dir,
         )
         .await;
-        let mut card = crate::ui::Card::new("DAEMON CLOUD MESH");
-        card.with_badge(crate::ui::badge_online("FLEET CONNECTED"));
+        let mut card = crate::ui::Card::new("DAEMON CLOUD SYNC");
+        card.with_badge(crate::ui::badge_online("CLOUD CONNECTED"));
         card.with_min_width(74);
         if let Some(ref c) = creds {
             card.add_kv("Device ID", &c.device_id);

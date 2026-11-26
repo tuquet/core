@@ -1,6 +1,6 @@
 use crate::config::AppConfig;
 
-pub async fn run_cloud_worker(
+pub async fn run_cloud_daemon(
     cloud_profile: Option<String>,
     workflow: Option<String>,
     headless: bool,
@@ -29,7 +29,7 @@ pub async fn run_cloud_worker(
     let anon_key =
         crate::infrastructure::cloud::resolve_supabase_anon_key(creds.api_key.as_deref())?;
 
-    let mut card = crate::ui::Card::new("AUTONOMOUS CLOUD FLEET WORKER");
+    let mut card = crate::ui::Card::new("AUTONOMOUS CLOUD WORKER");
     card.with_badge(crate::ui::badge_online("ONLINE"));
     card.with_min_width(74);
     card.add_kv("Device ID", &creds.device_id);
@@ -38,7 +38,7 @@ pub async fn run_cloud_worker(
     if let Some(ref p) = cloud_profile {
         card.add_kv("Target Profile", p);
     } else {
-        card.add_kv("Fleet Scope", "Workspace Profile Pool");
+        card.add_kv("Execution Scope", "Workspace Profile Pool");
     }
     card.add_kv("Poll Interval", format!("{} seconds", interval_secs));
     card.with_footer("Autonomous cloud mesh daemon active. Press Ctrl+C to terminate cleanly.");
@@ -51,7 +51,7 @@ pub async fn run_cloud_worker(
             ">> Executing autonomous pipeline on cloud profile '{}'...",
             target
         );
-        crate::infrastructure::cloud_fleet::CloudFleetOrchestrator::run_autonomous_cloud_session(
+        crate::infrastructure::cloud_profiles::CloudProfileOrchestrator::run_autonomous_cloud_session(
             &target,
             workflow,
             None,
@@ -103,7 +103,7 @@ pub async fn run_cloud_worker(
                     .filter(|b| b["status"].as_str() == Some("running"))
                     .count();
                 println!(
-                    "[{}] Fleet mesh online: {} total profiles ({} IDLE, {} RUNNING) | Node: {}",
+                    "[{}] Cloud worker online: {} total profiles ({} IDLE, {} RUNNING) | Node: {}",
                     time_str,
                     browsers.len(),
                     idle_count,
@@ -112,10 +112,14 @@ pub async fn run_cloud_worker(
                 );
             }
             Ok(r) => {
-                eprintln!("[{}] Failed to query fleet: HTTP {}", time_str, r.status());
+                eprintln!(
+                    "[{}] Failed to query cloud profiles: HTTP {}",
+                    time_str,
+                    r.status()
+                );
             }
             Err(e) => {
-                eprintln!("[{}] Network error polling fleet: {}", time_str, e);
+                eprintln!("[{}] Network error polling cloud profiles: {}", time_str, e);
             }
         }
 

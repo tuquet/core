@@ -29,11 +29,12 @@ pub use manager::{
 pub use manifest::{BrowserManifest, PlatformAsset, ReleaseEntry, fetch_manifest};
 pub use profile::BrowserProfile;
 pub use resolver::{
-    BrowserConfigFile, DetectedHostBrowser, InstalledRuntimeInfo, PINNED_CHROMIUM_REVISION,
-    PINNED_CHROMIUM_VERSION, PINNED_STEALTH_CHROMIUM_VERSION, RuntimeStatus, clean_runtime,
-    detect_host_browsers, detect_version_from_dir, download_chromium_runtime,
-    download_stealth_runtime, get_active_runtime_name, get_active_version, get_browser_config_path,
-    get_download_url, get_platform_exe_rel_path, get_platform_key, get_runtime_dir,
-    get_runtime_exe_path, get_runtime_status, list_installed_runtimes, resolve_data_dir,
-    resolve_executable_path, set_active_runtime, set_active_version,
+    BrowserConfigFile, DetectedHostBrowser, DownloadProgressEvent, InstalledRuntimeInfo,
+    PINNED_CHROMIUM_REVISION, PINNED_CHROMIUM_VERSION, PINNED_STEALTH_CHROMIUM_VERSION,
+    RuntimeStatus, clean_runtime, detect_host_browsers, detect_version_from_dir,
+    download_chromium_runtime, download_stealth_runtime, download_stealth_runtime_with_progress,
+    get_active_runtime_name, get_active_version, get_browser_config_path, get_download_url,
+    get_platform_exe_rel_path, get_platform_key, get_runtime_dir, get_runtime_exe_path,
+    get_runtime_status, list_installed_runtimes, resolve_data_dir, resolve_executable_path,
+    set_active_runtime, set_active_version,
 };

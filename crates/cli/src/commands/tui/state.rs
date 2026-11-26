@@ -187,7 +187,7 @@ impl TuiState {
             total_servers: 1,
         };
 
-        // 2. Probe Browser Fleet
+        // 2. Probe Browser Profile Pool
         let base_dir = crate::core::browser::resolve_data_dir();
         let browser_status = crate::core::browser::resolver::get_runtime_status();
         let sessions = crate::core::browser::pid_tracker::list_sessions(&base_dir, true);

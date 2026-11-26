@@ -145,6 +145,36 @@ pub fn handle_tools_list(id: Option<Value>) -> JsonRpcResponse {
                 }
             }
         },
+        {
+            "name": "logs_read",
+            "description": "Read and filter local SSOT logs in ~/.operon/logs/ (CI suite logs in ci/ci-*.log or daemon.log).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "source": {
+                        "type": "string",
+                        "enum": ["ci", "daemon"],
+                        "description": "Log source under ~/.operon/logs/ ('ci' or 'daemon'). Defaults to 'ci'."
+                    },
+                    "suite": {
+                        "type": "string",
+                        "description": "Optional CI suite name filter (e.g. 'core', 'console', 'glossary', 'docker') when source is 'ci'."
+                    },
+                    "errors_only": {
+                        "type": "boolean",
+                        "description": "Return only error/warning/FAIL lines. Defaults to false."
+                    },
+                    "search": {
+                        "type": "string",
+                        "description": "Optional case-insensitive substring filter."
+                    },
+                    "tail": {
+                        "type": "integer",
+                        "description": "Maximum trailing lines per log file (1-500). Defaults to 100."
+                    }
+                }
+            }
+        },
     ]);
 
     JsonRpcResponse::ok(id, json!({ "tools": tools }))

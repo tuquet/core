@@ -5,7 +5,7 @@ use std::path::Path;
 use crate::infrastructure::cloud_reporter::{CloudReporter, DeviceCredentials};
 use crate::ui::{Card, badge_error, badge_online, badge_step};
 
-pub struct CloudFleetOrchestrator;
+pub struct CloudProfileOrchestrator;
 
 #[derive(Debug, Clone)]
 pub struct AcquiredLease {
@@ -15,7 +15,7 @@ pub struct AcquiredLease {
     pub proxy: Option<String>,
 }
 
-impl CloudFleetOrchestrator {
+impl CloudProfileOrchestrator {
     /// Resolves cloud profile UUID from either an exact UUID string or profile name
     pub async fn resolve_profile_id(
         client: &reqwest::Client,
@@ -46,7 +46,7 @@ impl CloudFleetOrchestrator {
 
         if !res.status().is_success() {
             let err_body = res.text().await.unwrap_or_default();
-            return Err(format!("Failed to list fleet profiles for lookup: {}", err_body).into());
+            return Err(format!("Failed to list cloud profiles for lookup: {}", err_body).into());
         }
 
         let browsers: Vec<Value> = res.json().await?;
@@ -61,7 +61,7 @@ impl CloudFleetOrchestrator {
         }
 
         Err(format!(
-            "No cloud browser profile matching ID or name '{}' in fleet inventory",
+            "No cloud browser profile matching ID or name '{}' in cloud profile pool",
             id_or_name
         )
         .into())
@@ -393,7 +393,7 @@ impl CloudFleetOrchestrator {
         };
 
         println!(
-            "{} Lease successfully returned to cloud fleet!",
+            "{} Lease successfully returned to cloud profile pool!",
             badge_step("6/6")
         );
 
@@ -421,8 +421,8 @@ impl CloudFleetOrchestrator {
             ),
         );
         card.add_kv("SHA-256 Digest", &report.sha256_hash);
-        card.add_kv("Lease State", "IDLE (Unlocked for fleet mesh)");
-        card.with_footer("Cloud Profile Fleet Mesh orchestration pipeline finished successfully.");
+        card.add_kv("Lease State", "IDLE (Unlocked in cloud pool)");
+        card.with_footer("Cloud browser profile orchestration pipeline finished successfully.");
         card.print();
         println!();
 

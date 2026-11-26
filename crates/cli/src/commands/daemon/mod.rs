@@ -4,10 +4,10 @@ pub mod logs;
 pub mod supervisor;
 pub mod tools;
 
-pub use daemon::run_cloud_worker;
+pub use daemon::run_cloud_daemon;
 pub use logs::show_logs;
 pub use supervisor::{
-    check_status, get_log_file_path, get_pid_file_path, is_valid_worker_name, restart_daemon,
+    check_status, get_log_file_path, get_pid_file_path, is_valid_daemon_name, restart_daemon,
     run_server, stop_daemon,
 };
 pub use tools::{export_openapi, manage_config, print_probe_manifest};
@@ -31,7 +31,7 @@ pub async fn handle(command: WorkerSubcommands) -> Result<(), Box<dyn std::error
             headless,
             interval,
             once,
-        } => run_cloud_worker(cloud_profile, workflow, headless, interval, once).await,
+        } => run_cloud_daemon(cloud_profile, workflow, headless, interval, once).await,
         WorkerSubcommands::Stop { force } => stop_daemon(force).await,
         WorkerSubcommands::Restart { detach } => restart_daemon(detach).await,
         WorkerSubcommands::Status { url, format } => {
@@ -136,22 +136,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_is_valid_worker_name() {
+    fn test_is_valid_daemon_name() {
         // Valid daemon binary names: operon (primary) and opn (CLI alias), case-insensitive
-        assert!(is_valid_worker_name("operon"));
-        assert!(is_valid_worker_name("operon.exe"));
-        assert!(is_valid_worker_name("OPERON.EXE"));
-        assert!(is_valid_worker_name("opn"));
-        assert!(is_valid_worker_name("opn.exe"));
-        assert!(is_valid_worker_name("OPN.EXE"));
-        assert!(is_valid_worker_name("  opn.exe  "));
+        assert!(is_valid_daemon_name("operon"));
+        assert!(is_valid_daemon_name("operon.exe"));
+        assert!(is_valid_daemon_name("OPERON.EXE"));
+        assert!(is_valid_daemon_name("opn"));
+        assert!(is_valid_daemon_name("opn.exe"));
+        assert!(is_valid_daemon_name("OPN.EXE"));
+        assert!(is_valid_daemon_name("  opn.exe  "));
 
         // Non-daemon applications must be rejected
-        assert!(!is_valid_worker_name("chrome.exe"));
-        assert!(!is_valid_worker_name("notepad.exe"));
-        assert!(!is_valid_worker_name("svchost.exe"));
-        assert!(!is_valid_worker_name("cmd.exe"));
-        assert!(!is_valid_worker_name("powershell.exe"));
+        assert!(!is_valid_daemon_name("chrome.exe"));
+        assert!(!is_valid_daemon_name("notepad.exe"));
+        assert!(!is_valid_daemon_name("svchost.exe"));
+        assert!(!is_valid_daemon_name("cmd.exe"));
+        assert!(!is_valid_daemon_name("powershell.exe"));
     }
 
     #[tokio::test]

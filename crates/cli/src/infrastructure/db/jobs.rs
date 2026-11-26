@@ -65,13 +65,27 @@ impl<'a> SqliteJobRepository<'a> {
         options: &Value,
         status: &str,
     ) -> bool {
+        self.create_job_with_links(job_id, None, None, name, data, options, status)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn create_job_with_links(
+        &self,
+        job_id: &str,
+        browser_id: Option<&str>,
+        task_id: Option<&str>,
+        name: &str,
+        data: &Value,
+        options: &Value,
+        status: &str,
+    ) -> bool {
         let data_str = serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string());
         let options_str = serde_json::to_string(options).unwrap_or_else(|_| "{}".to_string());
 
         self.conn
             .execute(
-                "INSERT INTO jobs (id, name, data, options, status) VALUES (?1, ?2, ?3, ?4, ?5)",
-                params![job_id, name, data_str, options_str, status],
+                "INSERT INTO jobs (id, browser_id, task_id, name, data, options, status) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![job_id, browser_id, task_id, name, data_str, options_str, status],
             )
             .is_ok()
     }

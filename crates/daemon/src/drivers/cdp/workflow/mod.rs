@@ -1,7 +1,10 @@
-use crate::drivers::cdp::CdpSession;
+pub mod backend;
+mod export;
+mod expression;
+
+pub use backend::BrowserBackend;
+
 use crate::protocol::schema::AutomaStepLog;
-use async_trait::async_trait;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::collections::HashMap;
@@ -9,193 +12,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
-
-#[async_trait]
-pub trait BrowserBackend: Send + Sync {
-    async fn navigate(&self, url: &str) -> Result<(), String>;
-    async fn reload(&self) -> Result<(), String>;
-    async fn go_back(&self) -> Result<(), String>;
-    async fn go_forward(&self) -> Result<(), String>;
-    async fn get_url(&self) -> Result<String, String>;
-    async fn click_at_index(&self, selector: &str, index: usize) -> Result<(), String>;
-    async fn hover_at_index(&self, selector: &str, index: usize) -> Result<(), String>;
-    async fn type_text_at_index(
-        &self,
-        selector: &str,
-        index: usize,
-        text: &str,
-        clear: bool,
-        direct: bool,
-    ) -> Result<(), String>;
-    async fn press_key(&self, key: &str) -> Result<(), String>;
-    async fn scroll(&self, dx: f64, dy: f64) -> Result<(), String>;
-    async fn scroll_element(
-        &self,
-        selector: &str,
-        index: usize,
-        dx: f64,
-        dy: f64,
-        into_view: bool,
-        smooth: bool,
-    ) -> Result<bool, String>;
-    async fn get_text(
-        &self,
-        selector: &str,
-        index: Option<usize>,
-        multiple: bool,
-        include_tags: bool,
-    ) -> Result<Value, String>;
-    async fn get_attribute(
-        &self,
-        selector: &str,
-        attr: &str,
-        index: Option<usize>,
-        multiple: bool,
-    ) -> Result<Value, String>;
-    async fn element_exists(&self, selector: &str, timeout: Duration) -> Result<bool, String>;
-    async fn count_elements(&self, selector: &str) -> Result<usize, String>;
-    async fn manipulate_form_element(
-        &self,
-        selector: &str,
-        index: usize,
-        form_type: &str,
-        value: &str,
-        clear: bool,
-        selected: Option<bool>,
-    ) -> Result<Value, String>;
-    async fn capture_screenshot(&self, format: &str) -> Result<String, String>;
-    async fn get_cookies(&self, urls: Option<Vec<String>>) -> Result<Value, String>;
-    async fn set_cookie(&self, cookie: Value) -> Result<bool, String>;
-    async fn delete_cookies(
-        &self,
-        name: &str,
-        url: Option<&str>,
-        domain: Option<&str>,
-    ) -> Result<(), String>;
-    async fn evaluate(&self, script: &str) -> Result<Value, String>;
-    async fn solve_turnstile(&self, timeout: Duration) -> Result<bool, String>;
-}
-
-#[async_trait]
-impl BrowserBackend for CdpSession {
-    async fn navigate(&self, url: &str) -> Result<(), String> {
-        self.navigate(url).await
-    }
-    async fn reload(&self) -> Result<(), String> {
-        self.reload().await
-    }
-    async fn go_back(&self) -> Result<(), String> {
-        self.go_back().await
-    }
-    async fn go_forward(&self) -> Result<(), String> {
-        self.go_forward().await
-    }
-    async fn get_url(&self) -> Result<String, String> {
-        self.get_url().await
-    }
-    async fn click_at_index(&self, selector: &str, index: usize) -> Result<(), String> {
-        self.click_at_index(selector, index).await
-    }
-    async fn hover_at_index(&self, selector: &str, index: usize) -> Result<(), String> {
-        self.hover_at_index(selector, index).await
-    }
-    async fn type_text_at_index(
-        &self,
-        selector: &str,
-        index: usize,
-        text: &str,
-        clear: bool,
-        direct: bool,
-    ) -> Result<(), String> {
-        self.type_text_at_index(selector, index, text, clear, direct)
-            .await
-    }
-    async fn press_key(&self, key: &str) -> Result<(), String> {
-        self.press_key(key).await
-    }
-    async fn scroll(&self, dx: f64, dy: f64) -> Result<(), String> {
-        self.scroll(dx, dy).await
-    }
-    async fn scroll_element(
-        &self,
-        selector: &str,
-        index: usize,
-        dx: f64,
-        dy: f64,
-        into_view: bool,
-        smooth: bool,
-    ) -> Result<bool, String> {
-        self.element_engine()
-            .scroll_element(selector, index, dx, dy, into_view, smooth)
-            .await
-    }
-    async fn get_text(
-        &self,
-        selector: &str,
-        index: Option<usize>,
-        multiple: bool,
-        include_tags: bool,
-    ) -> Result<Value, String> {
-        self.element_engine()
-            .get_text(selector, index, multiple, include_tags)
-            .await
-    }
-    async fn get_attribute(
-        &self,
-        selector: &str,
-        attr: &str,
-        index: Option<usize>,
-        multiple: bool,
-    ) -> Result<Value, String> {
-        self.element_engine()
-            .get_attribute(selector, attr, index, multiple)
-            .await
-    }
-    async fn element_exists(&self, selector: &str, timeout: Duration) -> Result<bool, String> {
-        self.element_engine()
-            .element_exists(selector, timeout)
-            .await
-    }
-    async fn count_elements(&self, selector: &str) -> Result<usize, String> {
-        self.element_engine().count_elements(selector).await
-    }
-    async fn manipulate_form_element(
-        &self,
-        selector: &str,
-        index: usize,
-        form_type: &str,
-        value: &str,
-        clear: bool,
-        selected: Option<bool>,
-    ) -> Result<Value, String> {
-        self.element_engine()
-            .manipulate_form_element(selector, index, form_type, value, clear, selected)
-            .await
-    }
-    async fn capture_screenshot(&self, format: &str) -> Result<String, String> {
-        self.capture_screenshot(format).await
-    }
-    async fn get_cookies(&self, urls: Option<Vec<String>>) -> Result<Value, String> {
-        self.get_cookies(urls).await
-    }
-    async fn set_cookie(&self, cookie: Value) -> Result<bool, String> {
-        self.set_cookie(cookie).await
-    }
-    async fn delete_cookies(
-        &self,
-        name: &str,
-        url: Option<&str>,
-        domain: Option<&str>,
-    ) -> Result<(), String> {
-        self.delete_cookies(name, url, domain).await
-    }
-    async fn evaluate(&self, script: &str) -> Result<Value, String> {
-        self.evaluate(script).await
-    }
-    async fn solve_turnstile(&self, timeout: Duration) -> Result<bool, String> {
-        self.solve_turnstile(timeout).await
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct WorkflowSettings {
@@ -671,185 +487,15 @@ impl WorkflowDagExecutor {
 
     /// Recursively interpolates `{{variables.x}}`, `{{table.0.col}}`, `{{loopData.id}}`, etc.
     pub fn interpolate_string(&self, input: &str, state: &ExecutionState) -> String {
-        let re = Regex::new(r"\{\{([^{}]+)\}\}").unwrap();
-        re.replace_all(input, |caps: &regex::Captures| {
-            let expr = caps[1].trim();
-            Self::resolve_expression(expr, state)
-        })
-        .to_string()
+        expression::interpolate_string(input, state)
     }
 
     pub fn resolve_expression(expr: &str, state: &ExecutionState) -> String {
-        if expr == "$timestamp" {
-            return chrono::Utc::now().timestamp_millis().to_string();
-        }
-        if expr == "$date" {
-            return chrono::Utc::now().format("%Y-%m-%d").to_string();
-        }
-
-        if let Some(var_expr) = expr
-            .strip_prefix("variables.")
-            .or_else(|| expr.strip_prefix("vars."))
-        {
-            if let Some(v) = state.variables.get(var_expr) {
-                return match v {
-                    Value::String(s) => s.clone(),
-                    other => other.to_string(),
-                };
-            }
-            return String::new();
-        }
-
-        if let Some(key) = expr.strip_prefix("googleSheets.") {
-            // Automa: `referenceData.googleSheets[refKey]` (set by the `google-sheets` block).
-            return match state.google_sheets_refs.get(key.trim()) {
-                Some(Value::String(s)) => s.clone(),
-                Some(other) => other.to_string(),
-                None => String::new(),
-            };
-        }
-
-        if let Some(rest) = expr.strip_prefix("workflow.") {
-            // Automa stores a finished `execute-workflow` run as
-            // `referenceData.workflow[key] = { table, variables }`.
-            let mut parts = rest.splitn(2, '.');
-            let key = parts.next().unwrap_or("");
-            let path = parts.next().unwrap_or("");
-            let Some(entry) = state.workflows.get(key) else {
-                return String::new();
-            };
-            if path.is_empty() {
-                return entry.to_string();
-            }
-            let resolved = path
-                .split('.')
-                .filter(|segment| !segment.is_empty())
-                .try_fold(entry, |value, segment| match segment.parse::<usize>() {
-                    Ok(index) => value.get(index).or_else(|| value.get(segment)),
-                    Err(_) => value.get(segment),
-                });
-            return match resolved {
-                Some(Value::String(s)) => s.clone(),
-                Some(other) => other.to_string(),
-                None => String::new(),
-            };
-        }
-
-        if let Some(loop_expr) = expr.strip_prefix("loopData.") {
-            let parts: Vec<&str> = loop_expr.split('.').collect();
-            if let Some(loop_id) = parts.first() {
-                if let Some(ld) = state.loop_data.get(*loop_id) {
-                    if parts.len() == 1 {
-                        return ld.to_string();
-                    }
-                    if parts.len() >= 2 {
-                        let sub = parts[1];
-                        if sub == "$index" {
-                            if let Some(idx) = ld.get("$index") {
-                                return idx.to_string();
-                            }
-                        } else if sub == "data" {
-                            if let Some(d) = ld.get("data") {
-                                if parts.len() == 2 {
-                                    return match d {
-                                        Value::String(s) => s.clone(),
-                                        other => other.to_string(),
-                                    };
-                                }
-                                if parts.len() > 2 {
-                                    let field = parts[2];
-                                    if let Some(fv) = d.get(field) {
-                                        return match fv {
-                                            Value::String(s) => s.clone(),
-                                            other => other.to_string(),
-                                        };
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            return String::new();
-        }
-
-        if expr == "prevBlockData" {
-            return match &state.prev_block_data {
-                Value::String(s) => s.clone(),
-                other => other.to_string(),
-            };
-        }
-
-        if let Some(stripped) = expr.strip_prefix("prevBlockData.") {
-            if let Some(fv) = state.prev_block_data.get(stripped) {
-                return match fv {
-                    Value::String(s) => s.clone(),
-                    other => other.to_string(),
-                };
-            }
-        }
-
-        if let Some(gd_expr) = expr.strip_prefix("globalData.") {
-            if let Some(v) = state.variables.get(gd_expr) {
-                return match v {
-                    Value::String(s) => s.clone(),
-                    other => other.to_string(),
-                };
-            }
-        }
-
-        // Automa dialect: `{{secrets@name}}`. The graph only ever holds the reference;
-        // the value is resolved here from the Secret Store and scrubbed by the masker.
-        if let Some(sec_expr) = expr.strip_prefix("secrets@") {
-            if let Some(v) = state.secrets.get(sec_expr) {
-                return match v {
-                    Value::String(s) => s.clone(),
-                    other => other.to_string(),
-                };
-            }
-            return String::new();
-        }
-
-        String::new()
+        expression::resolve_expression(expr, state)
     }
 
     pub fn interpolate_value(&self, val: &Value, state: &ExecutionState) -> Value {
-        match val {
-            Value::String(s) => {
-                let trimmed = s.trim();
-                if trimmed.starts_with("{{")
-                    && trimmed.ends_with("}}")
-                    && !trimmed[2..trimmed.len() - 2].contains("{{")
-                {
-                    let expr = trimmed[2..trimmed.len() - 2].trim();
-                    if let Some(var_expr) = expr
-                        .strip_prefix("variables.")
-                        .or_else(|| expr.strip_prefix("vars."))
-                    {
-                        if let Some(v) = state.variables.get(var_expr) {
-                            return v.clone();
-                        }
-                    }
-                    if expr == "prevBlockData" {
-                        return state.prev_block_data.clone();
-                    }
-                }
-                Value::String(self.interpolate_string(s, state))
-            }
-            Value::Array(arr) => Value::Array(
-                arr.iter()
-                    .map(|item| self.interpolate_value(item, state))
-                    .collect(),
-            ),
-            Value::Object(obj) => {
-                let mut out = Map::new();
-                for (k, v) in obj {
-                    out.insert(k.clone(), self.interpolate_value(v, state));
-                }
-                Value::Object(out)
-            }
-            other => other.clone(),
-        }
+        expression::interpolate_value(val, state)
     }
 
     pub fn execute<'a>(
@@ -974,8 +620,10 @@ impl WorkflowDagExecutor {
                                 });
                             }
 
-                            // Resolve outgoing connections: if branch matches a node ID directly (e.g. loop block id), jump to it directly
-                            if self.graph.nodes.contains_key(&branch) {
+                            // Resolve outgoing connections: only `loop-breakpoint` jumps directly back to a loop block ID
+                            if node.label == "loop-breakpoint"
+                                && self.graph.nodes.contains_key(&branch)
+                            {
                                 next_queue.push((branch, None));
                             } else {
                                 let output_handle = if branch.starts_with(&node.id) {
@@ -1122,152 +770,6 @@ impl WorkflowDagExecutor {
                 ));
             }
         })
-    }
-
-    /// Renders column-oriented Automa table data / row objects as CSV.
-    ///
-    /// Header order follows the workflow's declared `table` columns first (Automa
-    /// `workflow.table`), then any extra keys encountered, so a declared-but-empty table
-    /// still produces a header row.
-    fn rows_to_csv(
-        rows: &[Value],
-        declared_columns: &[String],
-        delimiter: &str,
-        add_bom: bool,
-    ) -> String {
-        let mut columns: Vec<String> = declared_columns.to_vec();
-        for row in rows {
-            if let Some(obj) = row.as_object() {
-                for key in obj.keys() {
-                    if !columns.iter().any(|c| c == key) {
-                        columns.push(key.clone());
-                    }
-                }
-            }
-        }
-
-        let mut out = String::new();
-        if add_bom {
-            out.push('\u{feff}');
-        }
-        if !columns.is_empty() {
-            out.push_str(
-                &columns
-                    .iter()
-                    .map(|c| Self::csv_cell(c, delimiter))
-                    .collect::<Vec<_>>()
-                    .join(delimiter),
-            );
-            out.push('\n');
-        }
-        for row in rows {
-            let cells = columns
-                .iter()
-                .map(|col| {
-                    Self::csv_cell(
-                        &row.get(col).map(Self::cell_text).unwrap_or_default(),
-                        delimiter,
-                    )
-                })
-                .collect::<Vec<_>>();
-            out.push_str(&cells.join(delimiter));
-            out.push('\n');
-        }
-        out
-    }
-
-    /// RFC-4180 quoting: only quote when the cell contains the delimiter, a quote or a newline.
-    fn csv_cell(value: &str, delimiter: &str) -> String {
-        if value.contains(delimiter)
-            || value.contains('"')
-            || value.contains('\n')
-            || value.contains('\r')
-        {
-            format!("\"{}\"", value.replace('"', "\"\""))
-        } else {
-            value.to_string()
-        }
-    }
-
-    fn cell_text(value: &Value) -> String {
-        match value {
-            Value::String(s) => s.clone(),
-            Value::Null => String::new(),
-            other => other.to_string(),
-        }
-    }
-
-    /// Automa `plain-text` exports: all values flattened and joined with a single space.
-    fn rows_to_plain_text(rows: &[Value]) -> String {
-        let mut parts: Vec<String> = Vec::new();
-        for row in rows {
-            match row {
-                Value::Object(obj) => {
-                    for value in obj.values() {
-                        parts.push(Self::cell_text(value));
-                    }
-                }
-                other => parts.push(Self::cell_text(other)),
-            }
-        }
-        parts.join(" ")
-    }
-
-    /// Writes an export artefact to disk.
-    ///
-    /// Automa hands the bytes to the browser's download API; a headless daemon has no such
-    /// surface, so the file is written under `EXPORT_DIR` (default `~/.operon/automation/exports`)
-    /// and the path is returned. `onConflict` mirrors Automa: `uniquify` (default) keeps
-    /// existing files and appends `-1`, `-2`…; `overwrite` replaces.
-    fn write_export_file(
-        base_name: &str,
-        ext: &str,
-        content: &str,
-        on_conflict: &str,
-    ) -> Result<String, String> {
-        let dir = std::env::var("EXPORT_DIR")
-            .ok()
-            .filter(|s| !s.trim().is_empty())
-            .map(std::path::PathBuf::from)
-            .unwrap_or_else(|| {
-                let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-                std::path::PathBuf::from(home).join(".operon/automation/exports")
-            });
-        std::fs::create_dir_all(&dir)
-            .map_err(|e| format!("export-data: cannot create {}: {e}", dir.display()))?;
-
-        // Never let a canvas-authored name escape the export directory.
-        let safe: String = base_name
-            .rsplit(['/', '\\'])
-            .next()
-            .unwrap_or("unnamed")
-            .chars()
-            .map(|c| {
-                if c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-') {
-                    c
-                } else {
-                    '_'
-                }
-            })
-            .collect();
-        let safe = if safe.is_empty() {
-            "unnamed".to_string()
-        } else {
-            safe
-        };
-
-        let mut path = dir.join(format!("{safe}.{ext}"));
-        if on_conflict != "overwrite" {
-            let mut counter = 1;
-            while path.exists() {
-                path = dir.join(format!("{safe}-{counter}.{ext}"));
-                counter += 1;
-            }
-        }
-
-        std::fs::write(&path, content)
-            .map_err(|e| format!("export-data: cannot write {}: {e}", path.display()))?;
-        Ok(path.to_string_lossy().to_string())
     }
 
     async fn execute_block(
@@ -1838,17 +1340,17 @@ impl WorkflowDagExecutor {
 
                 let (content, ext) = match export_type {
                     "csv" => (
-                        Self::rows_to_csv(&rows, &state.table_columns, delimiter, add_bom),
+                        export::rows_to_csv(&rows, &state.table_columns, delimiter, add_bom),
                         "csv",
                     ),
-                    "plain-text" => (Self::rows_to_plain_text(&rows), "txt"),
+                    "plain-text" => (export::rows_to_plain_text(&rows), "txt"),
                     _ => (
                         serde_json::to_string_pretty(&rows).unwrap_or_else(|_| "[]".to_string()),
                         "json",
                     ),
                 };
 
-                let path = Self::write_export_file(base_name, ext, &content, on_conflict)?;
+                let path = export::write_export_file(base_name, ext, &content, on_conflict)?;
                 debug!(
                     "export-data: wrote {} row(s) as {} to {}",
                     rows.len(),
@@ -2217,6 +1719,7 @@ impl WorkflowDagExecutor {
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use async_trait::async_trait;
     use std::sync::Mutex;
 
     pub struct InMemoryMockBackend {

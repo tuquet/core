@@ -37,14 +37,14 @@ impl ConfigRegistry {
                 path: automation_path,
             },
             PillarConfigEntry {
-                pillar: crate::constants::PILLAR_WORKER,
-                title: "Distributed Worker Daemon & Host Node",
+                pillar: crate::constants::PILLAR_DAEMON,
+                title: "Local Daemon & Host Node",
                 exists: runner_path.exists(),
                 path: runner_path,
             },
             PillarConfigEntry {
                 pillar: crate::constants::PILLAR_SYSTEM,
-                title: "Machine Identity & Cloud Fleet Enrollment",
+                title: "Machine Identity & Cloud Device Enrollment",
                 exists: system_path.exists(),
                 path: system_path,
             },
@@ -55,7 +55,7 @@ impl ConfigRegistry {
         match service.to_ascii_lowercase().as_str() {
             "browser" => Some(crate::constants::PILLAR_BROWSER),
             "automation" => Some(crate::constants::PILLAR_AUTOMATION),
-            "daemon" => Some(crate::constants::PILLAR_WORKER),
+            "daemon" => Some(crate::constants::PILLAR_DAEMON),
             "system" => Some(crate::constants::PILLAR_SYSTEM),
             _ => None,
         }
@@ -65,7 +65,7 @@ impl ConfigRegistry {
         match Self::canonical_service(service) {
             Some(crate::constants::PILLAR_BROWSER) => Some(BrowserConfig::config_path()),
             Some(crate::constants::PILLAR_AUTOMATION) => Some(AutomationConfig::config_path()),
-            Some(crate::constants::PILLAR_WORKER) => Some(RunnerConfig::config_path()),
+            Some(crate::constants::PILLAR_DAEMON) => Some(RunnerConfig::config_path()),
             Some(crate::constants::PILLAR_SYSTEM) => Some(SystemConfig::config_path()),
             _ => None,
         }
@@ -106,7 +106,7 @@ impl ConfigRegistry {
                 let schema = schemars::schema_for!(crate::config::AutomationConfig);
                 serde_json::to_value(&schema).ok()
             }
-            Some(crate::constants::PILLAR_WORKER) => {
+            Some(crate::constants::PILLAR_DAEMON) => {
                 let schema = schemars::schema_for!(crate::config::RunnerConfig);
                 serde_json::to_value(&schema).ok()
             }
@@ -126,7 +126,7 @@ impl ConfigRegistry {
             Some(crate::constants::PILLAR_AUTOMATION) => {
                 serde_json::to_value(crate::config::AutomationConfig::default()).unwrap_or_default()
             }
-            Some(crate::constants::PILLAR_WORKER) => {
+            Some(crate::constants::PILLAR_DAEMON) => {
                 serde_json::to_value(crate::config::RunnerConfig::default()).unwrap_or_default()
             }
             Some(crate::constants::PILLAR_SYSTEM) => {

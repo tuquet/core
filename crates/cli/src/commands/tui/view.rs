@@ -224,7 +224,7 @@ impl TuiView {
         stdout: &mut io::Stdout,
     ) -> io::Result<usize> {
         let mut count = 0;
-        Self::print_box_line(stdout, width, "● BROWSER RUNTIME & ANTI-DETECT FLEET")?;
+        Self::print_box_line(stdout, width, "● BROWSER RUNTIME & ANTI-DETECT PROFILES")?;
         count += 1;
         Self::print_box_line(stdout, width, "")?;
         count += 1;

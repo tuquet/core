@@ -109,7 +109,6 @@ if [ "$NO_DAEMON" -eq 0 ]; then
     if [ "$PLATFORM" = "macos" ]; then
         PLIST_DIR="${HOME}/Library/LaunchAgents"
         PLIST_PATH="${PLIST_DIR}/com.operon.daemon.plist"
-        rm -f "${PLIST_DIR}/com.operon.local-bridge.plist" # legacy plist cleanup
         mkdir -p "${PLIST_DIR}" "${OPERON_DIR}/logs"
         cat > "${PLIST_PATH}" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>

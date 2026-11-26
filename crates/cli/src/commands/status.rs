@@ -255,7 +255,7 @@ pub async fn show_dashboard(format: OutputFormat) -> Result<(), Box<dyn std::err
         ),
         TabularRow::new("Runtime Exec", exec_clean, footprint_str, binary_status),
         TabularRow::new(
-            "Sandbox Fleet",
+            "Profile Pool",
             format!("{} profile sandbox(es)", profile_count),
             "Isolated Antidetect Paths",
             badge_online("READY"),
