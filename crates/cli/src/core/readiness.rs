@@ -21,14 +21,14 @@ pub struct ReadinessIssue {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WorkstationReadiness {
+pub struct DesktopReadiness {
     pub state: ReadinessState,
     pub issues: Vec<ReadinessIssue>,
     pub ssot_root: PathBuf,
     pub timestamp: u64,
 }
 
-impl WorkstationReadiness {
+impl DesktopReadiness {
     pub fn is_pristine(&self) -> bool {
         self.state == ReadinessState::Pristine
     }
@@ -62,13 +62,13 @@ pub fn invalidate_cache() {
 }
 
 /// Fast passive probe without heavy operations (<5ms)
-pub fn quick_probe() -> WorkstationReadiness {
+pub fn quick_probe() -> DesktopReadiness {
     let now = current_timestamp();
     let cache_path = cache_file_path();
 
     // 1. Try reading valid cache first
     if let Ok(content) = fs::read_to_string(&cache_path) {
-        if let Ok(cached) = serde_json::from_str::<WorkstationReadiness>(&content) {
+        if let Ok(cached) = serde_json::from_str::<DesktopReadiness>(&content) {
             if now.saturating_sub(cached.timestamp) < READINESS_TTL_SECS {
                 return cached;
             }
@@ -81,12 +81,12 @@ pub fn quick_probe() -> WorkstationReadiness {
 
     // Case 1: Fresh Machine (SSOT root or system pillar does not exist)
     if !ssot_root.exists() || !system_pillar.exists() {
-        let readiness = WorkstationReadiness {
+        let readiness = DesktopReadiness {
             state: ReadinessState::Fresh,
             issues: vec![ReadinessIssue {
                 component: "SSOT Core".into(),
-                title: "Workstation has not been onboarded yet".into(),
-                remedy: "Run 'opn setup' to initialize workstation".into(),
+                title: "Desktop has not been onboarded yet".into(),
+                remedy: "Run 'opn setup' to initialize desktop".into(),
                 is_critical: true,
             }],
             ssot_root,
@@ -127,7 +127,7 @@ pub fn quick_probe() -> WorkstationReadiness {
         ReadinessState::Degraded
     };
 
-    let readiness = WorkstationReadiness {
+    let readiness = DesktopReadiness {
         state,
         issues,
         ssot_root,
@@ -138,7 +138,7 @@ pub fn quick_probe() -> WorkstationReadiness {
     readiness
 }
 
-fn save_cache(readiness: &WorkstationReadiness) {
+fn save_cache(readiness: &DesktopReadiness) {
     let cache_path = cache_file_path();
     if let Some(parent) = cache_path.parent() {
         let _ = fs::create_dir_all(parent);

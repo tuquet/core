@@ -46,7 +46,7 @@ async fn test_worker_sse_json_validity_e2e() {
     // 1. Start a Mock Worker to listen to the SSE stream
     let mut sse_stream = client
         .get(format!(
-            "http://127.0.0.1:{}/api/internal/worker/events?browserId=daemon_worker",
+            "http://127.0.0.1:{}/api/internal/daemon/events?browserId=daemon_worker",
             port
         ))
         .send()
@@ -183,7 +183,7 @@ async fn test_submit_job_passes_options() {
     // Start a Mock Worker SSE listener so submit_job doesn't need to launch real Chrome
     let mut _sse_stream = client
         .get(format!(
-            "http://127.0.0.1:{}/api/internal/worker/events?browserId=daemon_worker",
+            "http://127.0.0.1:{}/api/internal/daemon/events?browserId=daemon_worker",
             port
         ))
         .send()
@@ -216,7 +216,7 @@ async fn test_submit_job_passes_options() {
 
     assert!(res.status().is_success());
 
-    // Listen to the broadcast channel to see what was sent to the worker
+    // Listen to the broadcast channel to see what was sent to the daemon
     let msg = worker_rx.recv().await.unwrap();
     let parsed_msg: serde_json::Value = serde_json::from_str(&msg).unwrap();
 

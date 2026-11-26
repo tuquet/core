@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "SpecterGatewayConfig",
+  "title": "OperonGatewayConfig",
   "description": "Configuration schema for Network Gateway and Multi-VPS Mesh (~/.operon/gateway/gateway.json)",
   "type": "object",
   "properties": {

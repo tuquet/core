@@ -13,13 +13,13 @@ pub async fn execute_status() -> Result<String, String> {
             "enrolled": true,
             "device_id": creds.device_id,
             "device_name": creds.name,
-            "tenant_id": creds.tenant_id.as_deref().unwrap_or("Personal Workspace"),
+            "workspace_id": creds.workspace_id.as_deref().unwrap_or("Personal Workspace"),
             "endpoint": creds.cloud_url.as_deref().unwrap_or("(not configured)")
         })
     } else {
         json!({
             "enrolled": false,
-            "message": "Workstation not enrolled with cloud fleet. Run 'opn login' to authenticate."
+            "message": "Desktop not enrolled with cloud fleet. Run 'opn login' to authenticate."
         })
     };
 
@@ -58,7 +58,7 @@ pub async fn execute_status() -> Result<String, String> {
     let result = json!({
         "ecosystem": "operon",
         "cloud": cloud_info,
-        "worker": worker_info,
+        "daemon": worker_info,
         "browser": browser_info
     });
 
@@ -74,7 +74,7 @@ pub async fn execute_cloud_whoami() -> Result<String, String> {
             "enrolled": true,
             "device_id": creds.device_id,
             "name": creds.name,
-            "tenant_id": creds.tenant_id,
+            "workspace_id": creds.workspace_id,
             "cloud_url": creds.cloud_url,
             "enrolled_at": creds.registered_at
         });
@@ -82,7 +82,7 @@ pub async fn execute_cloud_whoami() -> Result<String, String> {
     } else {
         let res = json!({
             "enrolled": false,
-            "message": "Workstation is not paired with Cloud. Use 'opn login' to connect."
+            "message": "Desktop is not paired with Cloud. Use 'opn login' to connect."
         });
         Ok(serde_json::to_string_pretty(&res).unwrap_or_default())
     }

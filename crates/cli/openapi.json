@@ -931,12 +931,12 @@
         }
       }
     },
-    "/api/v1/internal/worker/events": {
+    "/api/v1/internal/daemon/events": {
       "get": {
         "tags": [
           "Jobs"
         ],
-        "summary": "Subscribe to worker event stream (SSE)",
+        "summary": "Subscribe to daemon event stream (SSE)",
         "description": "Establishes a long-lived Server-Sent Events (SSE) connection used by browser workers to receive workflow job dispatches and cancellation commands.",
         "operationId": "worker_sse",
         "parameters": [
@@ -1031,7 +1031,7 @@
           "Jobs"
         ],
         "summary": "Submit a workflow execution job",
-        "description": "Submits a new automation workflow job to be executed by a browser worker instance. Supports workflowId, inline workflowData, or filesystem workflowPath. Automationtically ensures the required browser instance is launched and connected.",
+        "description": "Submits a new automation workflow job to be executed by a browser daemon instance. Supports workflowId, inline workflowData, or filesystem workflowPath. Automationtically ensures the required browser instance is launched and connected.",
         "operationId": "submit_job",
         "requestBody": {
           "content": {
@@ -1075,7 +1075,7 @@
             }
           },
           "503": {
-            "description": "Browser worker unavailable or connection timeout",
+            "description": "Browser daemon unavailable or connection timeout",
             "content": {
               "application/json": {
                 "schema": {
@@ -1129,7 +1129,7 @@
           "Jobs"
         ],
         "summary": "Append execution log entry for a job",
-        "description": "Receives runtime log entries and block execution telemetry from the browser worker, persisting them to the database and broadcasting via SSE.",
+        "description": "Receives runtime log entries and block execution telemetry from the browser daemon, persisting them to the database and broadcasting via SSE.",
         "operationId": "append_job_log",
         "parameters": [
           {
@@ -1175,7 +1175,7 @@
           "Jobs"
         ],
         "summary": "Pause a running job",
-        "description": "Dispatches a pause-workflow signal to the worker, updates job status to 'paused', and broadcasts event via SSE.",
+        "description": "Dispatches a pause-workflow signal to the daemon, updates job status to 'paused', and broadcasts event via SSE.",
         "operationId": "pause_job",
         "parameters": [
           {
@@ -1218,7 +1218,7 @@
           "Jobs"
         ],
         "summary": "Resume a paused job",
-        "description": "Dispatches a resume-workflow signal to the worker, updates job status to 'running', and broadcasts event via SSE.",
+        "description": "Dispatches a resume-workflow signal to the daemon, updates job status to 'running', and broadcasts event via SSE.",
         "operationId": "resume_job",
         "parameters": [
           {
@@ -1338,7 +1338,7 @@
           "Lint"
         ],
         "summary": "Validate and lint Automation assets (Gateway Stub)",
-        "description": "Gateway passthrough stub. In the architecture, workflow graph validation is performed client-side by Web Studio and runtime blocks are executed by the browser worker.",
+        "description": "Gateway passthrough stub. In the architecture, workflow graph validation is performed client-side by Web Studio and runtime blocks are executed by the browser daemon.",
         "operationId": "lint_workflow",
         "requestBody": {
           "content": {
@@ -3095,14 +3095,14 @@
               "string",
               "null"
             ],
-            "description": "Persistent workstation device ID"
+            "description": "Persistent desktop device ID"
           },
           "deviceName": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Enrolled workstation name"
+            "description": "Enrolled desktop name"
           },
           "enabled": {
             "type": "boolean",

@@ -21,13 +21,13 @@ use super::types::{
     path = "/api/v1/jobs",
     operation_id = "submit_job",
     summary = "Submit a workflow execution job",
-    description = "Submits a new automation workflow job to be executed by a browser worker instance. Supports workflowId, inline workflowData, or filesystem workflowPath. Automationtically ensures the required browser instance is launched and connected.",
+    description = "Submits a new automation workflow job to be executed by a browser daemon instance. Supports workflowId, inline workflowData, or filesystem workflowPath. Automationtically ensures the required browser instance is launched and connected.",
     request_body = SubmitJobPayload,
     responses(
         (status = 200, description = "Job submitted and accepted for execution", body = SubmitJobResponse),
         (status = 400, description = "Invalid request payload or unreadable workflow file", body = crate::core::error::ApiErrorResponse),
         (status = 429, description = "Maximum concurrent jobs reached", body = SubmitJobResponse),
-        (status = 503, description = "Browser worker unavailable or connection timeout", body = SubmitJobResponse)
+        (status = 503, description = "Browser daemon unavailable or connection timeout", body = SubmitJobResponse)
     )
 )]
 pub async fn submit_job(
@@ -115,7 +115,7 @@ pub async fn submit_job(
     path = "/api/v1/jobs/{job_id}/logs",
     operation_id = "append_job_log",
     summary = "Append execution log entry for a job",
-    description = "Receives runtime log entries and block execution telemetry from the browser worker, persisting them to the database and broadcasting via SSE.",
+    description = "Receives runtime log entries and block execution telemetry from the browser daemon, persisting them to the database and broadcasting via SSE.",
     params(
         ("job_id" = String, Path, description = "Unique job identifier")
     ),
@@ -268,7 +268,7 @@ pub async fn kill_job(
     path = "/api/v1/jobs/{job_id}/pause",
     operation_id = "pause_job",
     summary = "Pause a running job",
-    description = "Dispatches a pause-workflow signal to the worker, updates job status to 'paused', and broadcasts event via SSE.",
+    description = "Dispatches a pause-workflow signal to the daemon, updates job status to 'paused', and broadcasts event via SSE.",
     params(
         ("job_id" = String, Path, description = "Unique job identifier")
     ),
@@ -294,7 +294,7 @@ pub async fn pause_job(
         let _ = db.jobs().update_job_status(job_id.as_str(), "paused");
     }
 
-    // 2. Dispatch pause event to browser worker
+    // 2. Dispatch pause event to browser daemon
     let event = JobEvent {
         job_id: job_id.to_string(),
         event_type: "pause-workflow".to_string(),
@@ -327,7 +327,7 @@ pub async fn pause_job(
     path = "/api/v1/jobs/{job_id}/resume",
     operation_id = "resume_job",
     summary = "Resume a paused job",
-    description = "Dispatches a resume-workflow signal to the worker, updates job status to 'running', and broadcasts event via SSE.",
+    description = "Dispatches a resume-workflow signal to the daemon, updates job status to 'running', and broadcasts event via SSE.",
     params(
         ("job_id" = String, Path, description = "Unique job identifier")
     ),
@@ -353,7 +353,7 @@ pub async fn resume_job(
         let _ = db.jobs().update_job_status(job_id.as_str(), "running");
     }
 
-    // 2. Dispatch resume event to browser worker
+    // 2. Dispatch resume event to browser daemon
     let event = JobEvent {
         job_id: job_id.to_string(),
         event_type: "resume-workflow".to_string(),

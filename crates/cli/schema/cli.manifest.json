@@ -63,7 +63,7 @@
       ],
       "pillar": "automation",
       "title": "Execute Automation Workflow",
-      "description": "Execute a DAG workflow directly via Chromium automation worker.",
+      "description": "Execute a DAG workflow directly via Chromium automation daemon.",
       "arguments": [
         {
           "name": "workflow_pos",
@@ -616,7 +616,7 @@
       ],
       "pillar": "browser",
       "title": "List Installed Browser Engines",
-      "description": "List all locally installed Chromium runtimes on this workstation.",
+      "description": "List all locally installed Chromium runtimes on this desktop.",
       "options": [
         {
           "name": "format",
@@ -695,7 +695,7 @@
       ],
       "pillar": "browser",
       "title": "List Cloud Browser Profiles",
-      "description": "List all central cloud browser profiles in current tenant.",
+      "description": "List all central cloud browser profiles in current workspace.",
       "options": [
         {
           "name": "json",
@@ -1185,7 +1185,7 @@
     {
       "id": "operon.runner.logs",
       "route": [
-        "worker",
+        "daemon",
         "logs"
       ],
       "pillar": "runner",
@@ -1211,7 +1211,7 @@
     {
       "id": "operon.runner.probe",
       "route": [
-        "worker",
+        "daemon",
         "probe"
       ],
       "pillar": "runner",
@@ -1225,7 +1225,7 @@
     {
       "id": "operon.runner.restart",
       "route": [
-        "worker",
+        "daemon",
         "restart"
       ],
       "pillar": "runner",
@@ -1244,12 +1244,12 @@
     {
       "id": "operon.runner.start",
       "route": [
-        "worker",
+        "daemon",
         "start"
       ],
       "pillar": "runner",
       "title": "Start Runner Daemon",
-      "description": "Start local runner daemon and cloud worker HTTP server on port 8765.",
+      "description": "Start local runner daemon and cloud daemon HTTP server on port 8765.",
       "options": [
         {
           "name": "port",
@@ -1270,7 +1270,7 @@
     {
       "id": "operon.runner.status",
       "route": [
-        "worker",
+        "daemon",
         "status"
       ],
       "pillar": "runner",
@@ -1309,7 +1309,7 @@
     {
       "id": "operon.runner.stop",
       "route": [
-        "worker",
+        "daemon",
         "stop"
       ],
       "pillar": "runner",
@@ -1326,14 +1326,14 @@
       ]
     },
     {
-      "id": "operon.runner.worker",
+      "id": "operon.runner.daemon",
       "route": [
-        "worker",
-        "worker"
+        "daemon",
+        "daemon"
       ],
       "pillar": "runner",
       "title": "Cloud Fleet Mesh Worker",
-      "description": "Run as an autonomous cloud fleet worker polling and executing jobs.",
+      "description": "Run as an autonomous cloud fleet daemon polling and executing jobs.",
       "options": [
         {
           "name": "cloud_profile",
@@ -1375,7 +1375,7 @@
       ],
       "pillar": "cloud",
       "title": "Cloud Authentication Login",
-      "description": "Authenticate operator identity, resolve multi-tenant workspace, and pair workstation with Cloud.",
+      "description": "Authenticate operator identity, resolve multi-workspace workspace, and pair desktop with Cloud.",
       "options": [
         {
           "name": "url",
@@ -1411,10 +1411,10 @@
           "name": "token",
           "short": "t",
           "type": "string",
-          "description": "Organization / Tenant enrollment token or JWT."
+          "description": "Organization / Workspace enrollment token or JWT."
         },
         {
-          "name": "tenant",
+          "name": "workspace",
           "type": "string",
           "description": "Pre-select target workspace by slug or ID."
         },
@@ -1422,7 +1422,7 @@
           "name": "name",
           "short": "n",
           "type": "string",
-          "description": "Custom workstation name (defaults to machine hostname)."
+          "description": "Custom desktop name (defaults to machine hostname)."
         },
         {
           "name": "api-key",
@@ -1466,7 +1466,7 @@
       ],
       "pillar": "cloud",
       "title": "Cloud Disconnect & Logout",
-      "description": "Log out and disconnect this workstation from Cloud."
+      "description": "Log out and disconnect this desktop from Cloud."
     },
     {
       "id": "operon.cloud.whoami",
@@ -1476,7 +1476,7 @@
       ],
       "pillar": "cloud",
       "title": "Display Cloud Enrollment Identity",
-      "description": "Show current Cloud identity, enrolled device GUID, and tenant ID.",
+      "description": "Show current Cloud identity, enrolled device GUID, and workspace ID.",
       "options": [
         {
           "name": "format",
@@ -1512,15 +1512,15 @@
       }
     },
     {
-      "id": "operon.cloud.tenant.list",
+      "id": "operon.cloud.workspace.list",
       "route": [
         "auth",
-        "tenant",
+        "workspace",
         "list"
       ],
       "pillar": "cloud",
       "title": "List Accessible Workspaces",
-      "description": "List all accessible multi-tenant workspaces for the authenticated operator.",
+      "description": "List all accessible multi-workspace workspaces for the authenticated operator.",
       "options": [
         {
           "name": "format",
@@ -1552,15 +1552,15 @@
       ]
     },
     {
-      "id": "operon.cloud.tenant.switch",
+      "id": "operon.cloud.workspace.switch",
       "route": [
         "auth",
-        "tenant",
+        "workspace",
         "switch"
       ],
       "pillar": "cloud",
       "title": "Switch Active Workspace",
-      "description": "Switch active workspace context for this workstation and re-pair device.",
+      "description": "Switch active workspace context for this desktop and re-pair device.",
       "arguments": [
         {
           "name": "target",
@@ -1600,10 +1600,10 @@
       ]
     },
     {
-      "id": "operon.cloud.tenant.current",
+      "id": "operon.cloud.workspace.current",
       "route": [
         "auth",
-        "tenant",
+        "workspace",
         "current"
       ],
       "pillar": "cloud",

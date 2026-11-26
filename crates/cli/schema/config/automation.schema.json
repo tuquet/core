@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "SpecterAutomationConfig",
+  "title": "OperonAutomationConfig",
   "description": "Configuration schema for Automation Workflow Automation Engine (~/.operon/automation/automation.json)",
   "type": "object",
   "properties": {

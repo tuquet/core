@@ -1,7 +1,7 @@
 use crate::cli::CloudSubcommands;
 use crate::config::AppConfig;
 use crate::infrastructure::cloud::{
-    CloudApiClient, CredentialStore, SupabaseAuthClient, TenancyManager, TenantInfo,
+    CloudApiClient, CredentialStore, SupabaseAuthClient, WorkspaceInfo, WorkspaceManager,
 };
 use crate::infrastructure::cloud_reporter::CloudReporter;
 use crate::ui::{
@@ -19,7 +19,7 @@ pub async fn handle(command: CloudSubcommands) -> Result<(), Box<dyn std::error:
             otp,
             code,
             token,
-            tenant,
+            workspace,
             name,
             api_key,
             format,
@@ -30,7 +30,7 @@ pub async fn handle(command: CloudSubcommands) -> Result<(), Box<dyn std::error:
             otp,
             code,
             token,
-            tenant,
+            workspace,
             name,
             api_key,
             format.resolve(),
@@ -39,7 +39,9 @@ pub async fn handle(command: CloudSubcommands) -> Result<(), Box<dyn std::error:
         .map_err(|e| e as Box<dyn std::error::Error>),
         CloudSubcommands::Logout => logout().await,
         CloudSubcommands::Whoami { format } => whoami(format.resolve()).await,
-        CloudSubcommands::Tenant { command } => crate::commands::tenant::handle(command).await,
+        CloudSubcommands::Workspace { command } => {
+            crate::commands::workspace::handle(command).await
+        }
         CloudSubcommands::Config { edit, show, args } => manage_config(&args, edit, show),
     }
 }
@@ -61,7 +63,7 @@ pub async fn login(
     otp: bool,
     code: Option<String>,
     token: Option<String>,
-    tenant: Option<String>,
+    workspace: Option<String>,
     name: Option<String>,
     api_key: Option<String>,
     format: OutputFormat,
@@ -108,7 +110,7 @@ pub async fn login(
             ),
             ClackOption::new(
                 "Anonymous Device Enrollment",
-                "Pair workstation runner node without operator session",
+                "Pair desktop runner node without operator session",
                 "Anonymous Device Enrollment",
             ),
         ];
@@ -322,12 +324,12 @@ pub async fn login(
         maybe_session = Some((sess.access_token, sess.refresh_token, sess.expires_at));
     }
 
-    // 3. Multi-Tenant Workspace Resolution
-    let mut resolved_tenant_id: Option<String> = None;
-    let mut resolved_tenant_slug: Option<String> = None;
-    let mut resolved_tenant_name: Option<String> = None;
-    let mut resolved_tenant_role: Option<String> = None;
-    let mut available_tenants: Option<Vec<TenantInfo>> = None;
+    // 3. Multi-Workspace Workspace Resolution
+    let mut resolved_workspace_id: Option<String> = None;
+    let mut resolved_workspace_slug: Option<String> = None;
+    let mut resolved_workspace_name: Option<String> = None;
+    let mut resolved_workspace_role: Option<String> = None;
+    let mut available_workspaces: Option<Vec<WorkspaceInfo>> = None;
 
     if let (Some(u_id), Some((access_tok, _, _))) = (&maybe_user_id, &maybe_session) {
         let sp = if !format.is_json() {
@@ -339,7 +341,7 @@ pub async fn login(
             None
         };
 
-        match TenancyManager::fetch_user_tenants(
+        match WorkspaceManager::fetch_user_workspaces(
             &client,
             &cloud_url,
             &active_anon_key,
@@ -348,17 +350,21 @@ pub async fn login(
         )
         .await
         {
-            Ok(mut tenants) => {
+            Ok(mut workspaces) => {
                 if let Some(s) = sp {
                     s.clear();
                 }
-                if !tenants.is_empty() {
-                    let active_tenant = if let Some(target) = tenant.as_deref() {
-                        TenancyManager::resolve_active_tenant(&mut tenants, Some(target), None)?
-                    } else if tenants.len() == 1 {
-                        &mut tenants[0]
+                if !workspaces.is_empty() {
+                    let active_workspace = if let Some(target) = workspace.as_deref() {
+                        WorkspaceManager::resolve_active_workspace(
+                            &mut workspaces,
+                            Some(target),
+                            None,
+                        )?
+                    } else if workspaces.len() == 1 {
+                        &mut workspaces[0]
                     } else if is_tty && !format.is_json() {
-                        let ws_opts: Vec<ClackOption> = tenants
+                        let ws_opts: Vec<ClackOption> = workspaces
                             .iter()
                             .map(|t| {
                                 let role_str = t.role.as_deref().unwrap_or("member");
@@ -371,7 +377,7 @@ pub async fn login(
                             .collect();
 
                         let selected_idx = clack_select(
-                            "Select active workspace for this workstation",
+                            "Select active workspace for this desktop",
                             &ws_opts,
                             0,
                             8,
@@ -379,17 +385,17 @@ pub async fn login(
                         .ok()
                         .flatten()
                         .unwrap_or(0);
-                        &mut tenants[selected_idx]
+                        &mut workspaces[selected_idx]
                     } else {
-                        &mut tenants[0]
+                        &mut workspaces[0]
                     };
 
-                    active_tenant.is_active = true;
-                    resolved_tenant_id = Some(active_tenant.id.clone());
-                    resolved_tenant_slug = Some(active_tenant.slug.clone());
-                    resolved_tenant_name = Some(active_tenant.name.clone());
-                    resolved_tenant_role = active_tenant.role.clone();
-                    available_tenants = Some(tenants);
+                    active_workspace.is_active = true;
+                    resolved_workspace_id = Some(active_workspace.id.clone());
+                    resolved_workspace_slug = Some(active_workspace.slug.clone());
+                    resolved_workspace_name = Some(active_workspace.name.clone());
+                    resolved_workspace_role = active_workspace.role.clone();
+                    available_workspaces = Some(workspaces);
                 }
             }
             Err(e) => {
@@ -398,7 +404,7 @@ pub async fn login(
                 }
                 if !format.is_json() {
                     clack_step_warn(format!(
-                        "Could not introspect tenants: {}. Continuing with default workspace.",
+                        "Could not introspect workspaces: {}. Continuing with default workspace.",
                         e
                     ));
                 }
@@ -406,20 +412,18 @@ pub async fn login(
         }
     }
 
-    // 4. Enroll Workstation Device with Cloud Fleet
-    let enrollment_token = resolved_tenant_slug
+    // 4. Enroll Desktop Device with Cloud Fleet
+    let enrollment_token = resolved_workspace_slug
         .as_deref()
-        .or(resolved_tenant_id.as_deref())
-        .or(tenant.as_deref())
+        .or(resolved_workspace_id.as_deref())
+        .or(workspace.as_deref())
         .or(auth_token.as_deref())
         .or(config.cloud_enrollment_token.as_deref());
 
     let bearer_jwt = maybe_session.as_ref().map(|(tok, _, _)| tok.as_str());
 
     let sp = if !format.is_json() {
-        Some(ClackSpinner::start(
-            "Pairing workstation with Cloud Fleet...",
-        ))
+        Some(ClackSpinner::start("Pairing desktop with Cloud Fleet..."))
     } else {
         None
     };
@@ -436,7 +440,7 @@ pub async fn login(
         Ok(creds) => {
             if let Some(s) = sp {
                 s.finish(format!(
-                    "Workstation '{}' enrolled ({})",
+                    "Desktop '{}' enrolled ({})",
                     creds.name, creds.device_id
                 ));
             }
@@ -459,13 +463,13 @@ pub async fn login(
         device_creds.refresh_token = refresh_tok;
         device_creds.token_expires_at = exp_at;
     }
-    if resolved_tenant_id.is_some() {
-        device_creds.tenant_id = resolved_tenant_id;
+    if resolved_workspace_id.is_some() {
+        device_creds.workspace_id = resolved_workspace_id;
     }
-    device_creds.tenant_slug = resolved_tenant_slug;
-    device_creds.tenant_name = resolved_tenant_name;
-    device_creds.tenant_role = resolved_tenant_role;
-    device_creds.available_tenants = available_tenants;
+    device_creds.workspace_slug = resolved_workspace_slug;
+    device_creds.workspace_name = resolved_workspace_name;
+    device_creds.workspace_role = resolved_workspace_role;
+    device_creds.available_workspaces = available_workspaces;
 
     CredentialStore::save(&config.data_dir, &device_creds).await?;
 
@@ -522,10 +526,10 @@ fn present_login_success(
         "operator_email": device_creds.email,
         "operator_id": device_creds.user_id,
         "active_workspace": {
-            "id": device_creds.tenant_id,
-            "name": device_creds.tenant_name.as_deref().unwrap_or("Personal Workspace"),
-            "slug": device_creds.tenant_slug.as_deref().unwrap_or("default"),
-            "role": device_creds.tenant_role.as_deref().unwrap_or("owner")
+            "id": device_creds.workspace_id,
+            "name": device_creds.workspace_name.as_deref().unwrap_or("Personal Workspace"),
+            "slug": device_creds.workspace_slug.as_deref().unwrap_or("default"),
+            "role": device_creds.workspace_role.as_deref().unwrap_or("owner")
         },
         "endpoint": device_creds.cloud_url.as_deref().unwrap_or(cloud_url)
     });
@@ -544,14 +548,14 @@ fn present_login_success(
         card.add_kv(
             "Active Workspace",
             device_creds
-                .tenant_name
+                .workspace_name
                 .as_deref()
                 .unwrap_or("Personal Workspace"),
         );
-        if let Some(slug_val) = device_creds.tenant_slug.as_deref() {
+        if let Some(slug_val) = device_creds.workspace_slug.as_deref() {
             card.add_kv("Workspace Slug", slug_val);
         }
-        if let Some(role_val) = device_creds.tenant_role.as_deref() {
+        if let Some(role_val) = device_creds.workspace_role.as_deref() {
             card.add_kv("Workspace Role", role_val);
         }
         card.add_kv("Device ID", &device_creds.device_id);
@@ -560,7 +564,7 @@ fn present_login_success(
             "Endpoint",
             device_creds.cloud_url.as_deref().unwrap_or(cloud_url),
         );
-        card.with_footer("Workstation successfully paired with Cloud fleet");
+        card.with_footer("Desktop successfully paired with Cloud fleet");
 
         println!();
         card.print();
@@ -604,10 +608,10 @@ fn present_whoami(
             "device_name": creds.name,
             "operator_email": creds.email,
             "operator_id": creds.user_id,
-            "tenant_id": creds.tenant_id.as_deref().unwrap_or("Personal Workspace"),
-            "tenant_name": creds.tenant_name,
-            "tenant_slug": creds.tenant_slug,
-            "tenant_role": creds.tenant_role,
+            "workspace_id": creds.workspace_id.as_deref().unwrap_or("Personal Workspace"),
+            "workspace_name": creds.workspace_name,
+            "workspace_slug": creds.workspace_slug,
+            "workspace_role": creds.workspace_role,
             "endpoint": creds.cloud_url.as_deref().unwrap_or("(not configured)"),
             "token_expires_at": creds.token_expires_at,
             "enrolled_at": creds.registered_at
@@ -641,20 +645,23 @@ fn present_whoami(
             if let Some(user_id) = creds.user_id.as_deref() {
                 card.add_kv("Operator ID", user_id);
             }
-            if let Some(tenant_name) = creds.tenant_name.as_deref() {
-                card.add_kv("Active Workspace", tenant_name);
+            if let Some(workspace_name) = creds.workspace_name.as_deref() {
+                card.add_kv("Active Workspace", workspace_name);
             }
-            if let Some(slug) = creds.tenant_slug.as_deref() {
+            if let Some(slug) = creds.workspace_slug.as_deref() {
                 card.add_kv("Workspace Slug", slug);
             }
-            if let Some(role) = creds.tenant_role.as_deref() {
+            if let Some(role) = creds.workspace_role.as_deref() {
                 card.add_kv("Workspace Role", role);
             }
             card.add_kv("Device ID", &creds.device_id);
             card.add_kv("Device Name", &creds.name);
             card.add_kv(
-                "Tenant ID",
-                creds.tenant_id.as_deref().unwrap_or("Personal Workspace"),
+                "Workspace ID",
+                creds
+                    .workspace_id
+                    .as_deref()
+                    .unwrap_or("Personal Workspace"),
             );
             card.add_kv(
                 "Endpoint",
@@ -675,7 +682,9 @@ fn present_whoami(
                 }
             }
 
-            card.with_footer("Run 'opn auth tenant' to view available multi-tenant workspaces");
+            card.with_footer(
+                "Run 'opn auth workspace' to view available multi-workspace workspaces",
+            );
             println!();
             card.print();
             println!();
@@ -684,14 +693,14 @@ fn present_whoami(
         let payload = serde_json::json!({
             "enrolled": false,
             "authenticated": false,
-            "message": "Workstation not enrolled with cloud fleet. Run 'opn auth login' to authenticate."
+            "message": "Desktop not enrolled with cloud fleet. Run 'opn auth login' to authenticate."
         });
 
         respond_with(format, &payload, |_| {
             let mut card = Card::new("CLOUD IDENTITY");
             card.with_badge(badge_offline("DISCONNECTED"));
             card.with_min_width(64);
-            card.add_line("Workstation not enrolled with cloud fleet.");
+            card.add_line("Desktop not enrolled with cloud fleet.");
             card.with_footer("Run 'opn auth login' to authenticate with Cloud");
             println!();
             card.print();

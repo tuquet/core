@@ -40,20 +40,20 @@ pub async fn get_cloud_status(State(state): State<crate::AppState>) -> impl Into
         device_id,
         device_name,
         user_email,
-        tenant_id,
-        tenant_slug,
-        tenant_name,
-        tenant_role,
+        workspace_id,
+        workspace_slug,
+        workspace_name,
+        workspace_role,
     ) = match creds {
         Some(c) => (
             true,
             Some(c.device_id),
             Some(c.name),
             c.email,
-            c.tenant_id,
-            c.tenant_slug,
-            c.tenant_name,
-            c.tenant_role,
+            c.workspace_id,
+            c.workspace_slug,
+            c.workspace_name,
+            c.workspace_role,
         ),
         None => (false, None, None, None, None, None, None, None),
     };
@@ -69,10 +69,10 @@ pub async fn get_cloud_status(State(state): State<crate::AppState>) -> impl Into
             machine_fingerprint: fingerprint,
             heartbeat_interval_secs: state.config.cloud_heartbeat_interval_secs,
             user_email,
-            tenant_id,
-            tenant_slug,
-            tenant_name,
-            tenant_role,
+            workspace_id,
+            workspace_slug,
+            workspace_name,
+            workspace_role,
         }),
     )
         .into_response()
@@ -126,10 +126,10 @@ pub async fn trigger_cloud_sync(State(state): State<crate::AppState>) -> impl In
     path = "/api/v1/system/cloud/login",
     operation_id = "cloud_login",
     summary = "Enroll and authenticate this runner with Cloud",
-    description = "Authenticates this workstation runner with Cloud using an enrollment token or JWT and stores credentials locally.",
+    description = "Authenticates this desktop runner with Cloud using an enrollment token or JWT and stores credentials locally.",
     request_body = CloudLoginRequest,
     responses(
-        (status = 200, description = "Successfully enrolled workstation", body = CloudLoginResponse),
+        (status = 200, description = "Successfully enrolled desktop", body = CloudLoginResponse),
         (status = 400, description = "Enrollment failed or invalid parameters", body = CloudLoginResponse)
     )
 )]
@@ -148,7 +148,7 @@ pub async fn cloud_login(
         is_otp,
         payload.code,
         payload.token,
-        payload.tenant,
+        payload.workspace,
         payload.name,
         payload.api_key,
         crate::ui::OutputFormat::Json,
@@ -167,13 +167,13 @@ pub async fn cloud_login(
                         success: true,
                         enrolled: true,
                         device_id: c.device_id,
-                        tenant_id: c.tenant_id,
-                        tenant_slug: c.tenant_slug,
-                        tenant_name: c.tenant_name,
-                        tenant_role: c.tenant_role,
+                        workspace_id: c.workspace_id,
+                        workspace_slug: c.workspace_slug,
+                        workspace_name: c.workspace_name,
+                        workspace_role: c.workspace_role,
                         user_email: c.email,
                         name: c.name,
-                        message: "Workstation authenticated and paired successfully with Cloud"
+                        message: "Desktop authenticated and paired successfully with Cloud"
                             .to_string(),
                     }),
                 )
@@ -185,10 +185,10 @@ pub async fn cloud_login(
                         success: false,
                         enrolled: false,
                         device_id: "".to_string(),
-                        tenant_id: None,
-                        tenant_slug: None,
-                        tenant_name: None,
-                        tenant_role: None,
+                        workspace_id: None,
+                        workspace_slug: None,
+                        workspace_name: None,
+                        workspace_role: None,
                         user_email: None,
                         name: "".to_string(),
                         message: "Enrollment succeeded but failed to reload credentials"
@@ -204,10 +204,10 @@ pub async fn cloud_login(
                 success: false,
                 enrolled: false,
                 device_id: "".to_string(),
-                tenant_id: None,
-                tenant_slug: None,
-                tenant_name: None,
-                tenant_role: None,
+                workspace_id: None,
+                workspace_slug: None,
+                workspace_name: None,
+                workspace_role: None,
                 user_email: None,
                 name: "".to_string(),
                 message: format!("Enrollment failed: {}", e),
@@ -223,7 +223,7 @@ pub async fn cloud_login(
     path = "/api/v1/system/cloud/logout",
     operation_id = "cloud_logout",
     summary = "Disconnect and unenroll this runner from Cloud",
-    description = "Removes locally stored device credentials, disconnecting this workstation from Cloud.",
+    description = "Removes locally stored device credentials, disconnecting this desktop from Cloud.",
     responses(
         (status = 200, description = "Successfully logged out", body = CloudLogoutResponse)
     )
@@ -276,7 +276,7 @@ pub async fn start_desktop_auth(State(_state): State<crate::AppState>) -> impl I
     let nonce = uuid::Uuid::new_v4().to_string();
     let hostname = std::env::var("COMPUTERNAME")
         .or_else(|_| std::env::var("HOSTNAME"))
-        .unwrap_or_else(|_| "Local-Workstation".to_string());
+        .unwrap_or_else(|_| "Local-Desktop".to_string());
     let port = 8765;
     let auth_url = format!(
         "https://console.operon.dev/auth/desktop?client_id=desktop&state={}&port={}&machine_name={}",
@@ -327,7 +327,7 @@ async fn process_desktop_auth_payload(
 
     // 2. Validate token and persist session
     if let Some(ref token) = params.token {
-        let tenant_id = params.tenant_id.clone();
+        let workspace_id = params.workspace_id.clone();
         let data_dir = state.config.data_dir.clone();
         let cloud_url = crate::infrastructure::cloud::resolve_supabase_url(
             state.config.cloud_url.as_deref(),
@@ -356,8 +356,8 @@ async fn process_desktop_auth_payload(
                 }
                 creds.cloud_url = Some(cloud_url);
                 creds.api_key = Some(anon_key);
-                if let Some(ref t) = tenant_id {
-                    creds.tenant_id = Some(t.clone());
+                if let Some(ref t) = workspace_id {
+                    creds.workspace_id = Some(t.clone());
                 }
 
                 let _ =
@@ -369,13 +369,13 @@ async fn process_desktop_auth_payload(
                         "type": "auth_state_changed",
                         "isAuthenticated": true,
                         "userEmail": user.email,
-                        "tenantId": tenant_id,
+                        "workspaceId": workspace_id,
                         "message": "Authenticated with Admin successfully"
                     })
                     .to_string(),
                 );
 
-                Ok((user.email, tenant_id))
+                Ok((user.email, workspace_id))
             }
             Err(e) => Err((
                 StatusCode::UNAUTHORIZED,
@@ -426,7 +426,7 @@ pub async fn desktop_auth_callback(
 <body>
   <div class="card">
     <h2>Desk Connected!</h2>
-    <p>Your workstation is now securely paired with Admin.</p>
+    <p>Your desktop is now securely paired with Admin.</p>
     <div class="hint">You can safely close this browser tab.</div>
   </div>
   <script>setTimeout(() => window.close(), 1500);</script>
@@ -471,13 +471,13 @@ pub async fn desktop_auth_callback_post(
     Json(params): Json<DesktopAuthCallbackParams>,
 ) -> impl IntoResponse {
     match process_desktop_auth_payload(&state, &params).await {
-        Ok((user_email, tenant_id)) => (
+        Ok((user_email, workspace_id)) => (
             StatusCode::OK,
             Json(DesktopAuthCallbackResponse {
                 success: true,
-                message: "Workstation paired successfully with Admin".to_string(),
+                message: "Desktop paired successfully with Admin".to_string(),
                 user_email,
-                tenant_id,
+                workspace_id,
             }),
         )
             .into_response(),
@@ -487,7 +487,7 @@ pub async fn desktop_auth_callback_post(
                 success: false,
                 message: msg,
                 user_email: None,
-                tenant_id: None,
+                workspace_id: None,
             }),
         )
             .into_response(),

@@ -51,7 +51,7 @@ pub async fn handle(
                     println!("{}", schema.trim());
                 } else {
                     return Err(format!(
-                        "Unknown service '{}'. Available services: browser, automation, worker, system",
+                        "Unknown service '{}'. Available services: browser, automation, daemon, system",
                         srv
                     )
                     .into());
@@ -73,7 +73,7 @@ pub async fn handle(
                             "automation",
                             "Workflow Automation Engine (automation.schema.json)",
                         ),
-                        ("worker", "Distributed Worker Daemon (worker.schema.json)"),
+                        ("daemon", "Distributed Worker Daemon (daemon.schema.json)"),
                         (
                             "system",
                             "Machine Identity & Cloud Fleet (system.schema.json)",
@@ -149,12 +149,12 @@ fn run_interactive_schema() -> Result<(), Box<dyn std::error::Error>> {
         ),
         ClackOption::new(
             "Filter Commands by Microservice Pillar",
-            "Filter commands by system, automation, browser, worker, cloud",
+            "Filter commands by system, automation, browser, daemon, cloud",
             "Filter Commands by Microservice Pillar",
         ),
         ClackOption::new(
             "Inspect Microservice Config JSON Schema",
-            "View Draft 2020-12 JSON Schema for browser, automation, worker, system",
+            "View Draft 2020-12 JSON Schema for browser, automation, daemon, system",
             "Inspect Microservice Config JSON Schema",
         ),
         ClackOption::new(
@@ -354,7 +354,7 @@ fn show_config_overview() {
     card.with_min_width(70);
 
     card.add_kv("Standard", "JSON Schema Specification (Draft 2020-12)");
-    card.add_kv("Supported Services", "browser, automation, worker, system");
+    card.add_kv("Supported Services", "browser, automation, daemon, system");
     card.add_line("");
     card.add_line(format!(
         "  {BOLD_WHITE}Usage Example:{RESET}",
@@ -384,7 +384,7 @@ fn show_config_overview() {
 const GATEWAY_SCHEMA: &str = include_str!("../../schema/config/gateway.schema.json");
 const BROWSER_SCHEMA: &str = include_str!("../../schema/config/browser.schema.json");
 const AUTOMATION_SCHEMA: &str = include_str!("../../schema/config/automation.schema.json");
-const WORKER_SCHEMA: &str = include_str!("../../schema/config/worker.schema.json");
+const WORKER_SCHEMA: &str = include_str!("../../schema/config/daemon.schema.json");
 const SYSTEM_SCHEMA: &str = include_str!("../../schema/config/system.schema.json");
 
 pub fn get_dynamic_schema(service: &str) -> Option<String> {
@@ -397,7 +397,7 @@ pub fn get_config_schema(service: &str) -> Option<&'static str> {
         "gateway" => Some(GATEWAY_SCHEMA),
         "browser" => Some(BROWSER_SCHEMA),
         "automation" => Some(AUTOMATION_SCHEMA),
-        "worker" => Some(WORKER_SCHEMA),
+        "daemon" => Some(WORKER_SCHEMA),
         "system" => Some(SYSTEM_SCHEMA),
         _ => None,
     }

@@ -2,7 +2,7 @@ use crate::config::AppConfig;
 use crate::infrastructure::cloud_reporter::CloudReporter;
 use crate::ui::{
     OutputFormat, TabularRow, badge_offline, badge_online, badge_warn,
-    create_network_topology_card, create_tabular_card, default_workstation_endpoints, respond_with,
+    create_network_topology_card, create_tabular_card, default_desktop_endpoints, respond_with,
 };
 use std::path::PathBuf;
 
@@ -13,7 +13,7 @@ pub async fn show_dashboard(format: OutputFormat) -> Result<(), Box<dyn std::err
     let cloud_creds = CloudReporter::whoami(&config.data_dir).await;
     let hostname = std::env::var("COMPUTERNAME")
         .or_else(|_| std::env::var("HOSTNAME"))
-        .unwrap_or_else(|_| "WORKSTATION".to_string());
+        .unwrap_or_else(|_| "DESKTOP".to_string());
 
     let (system_badge, cloud_target_val, cloud_status) = if let Some(ref creds) = cloud_creds {
         (
@@ -29,13 +29,13 @@ pub async fn show_dashboard(format: OutputFormat) -> Result<(), Box<dyn std::err
         )
     };
 
-    let workstation_val = cloud_creds
+    let desktop_val = cloud_creds
         .as_ref()
         .map(|c| c.name.as_str())
         .unwrap_or(&hostname);
-    let tenant_val = cloud_creds
+    let workspace_val = cloud_creds
         .as_ref()
-        .and_then(|c| c.tenant_id.as_deref())
+        .and_then(|c| c.workspace_id.as_deref())
         .unwrap_or("Personal Workspace");
 
     let cloud_display = cloud_target_val
@@ -43,8 +43,8 @@ pub async fn show_dashboard(format: OutputFormat) -> Result<(), Box<dyn std::err
         .trim_end_matches('/');
     let system_rows = vec![
         TabularRow::new(
-            "Workstation",
-            workstation_val,
+            "Desktop",
+            desktop_val,
             "Local Node Host",
             badge_online("READY"),
         ),
@@ -61,8 +61,8 @@ pub async fn show_dashboard(format: OutputFormat) -> Result<(), Box<dyn std::err
             cloud_status,
         ),
         TabularRow::new(
-            "Tenant Scope",
-            tenant_val,
+            "Workspace Scope",
+            workspace_val,
             "Workspace Organization",
             if cloud_creds.is_some() {
                 badge_online("ACTIVE")
@@ -78,7 +78,7 @@ pub async fn show_dashboard(format: OutputFormat) -> Result<(), Box<dyn std::err
         ["COMPONENT", "IDENTITY / TARGET", "ROLE / DETAILS", "STATUS"],
         &system_rows,
         Some(if cloud_creds.is_some() {
-            "Workstation enrolled in Cloud Mesh"
+            "Desktop enrolled in Cloud Mesh"
         } else {
             "Run 'opn auth login' to authenticate with Cloud"
         }),
@@ -164,7 +164,7 @@ pub async fn show_dashboard(format: OutputFormat) -> Result<(), Box<dyn std::err
     ];
 
     let automation_card = create_tabular_card(
-        "AUTOMATION & RUNNER",
+        "DAEMON",
         Some(if daemon_running {
             badge_online("RUNNING")
         } else {
@@ -178,9 +178,9 @@ pub async fn show_dashboard(format: OutputFormat) -> Result<(), Box<dyn std::err
         ],
         &automation_rows,
         Some(if daemon_running {
-            "Runner daemon active on local endpoint"
+            "Daemon active on local endpoint"
         } else {
-            "Start runner daemon with 'opn runner start --port 8765'"
+            "Start daemon with 'opn daemon start --port 8765'"
         }),
         72,
     );
@@ -284,7 +284,7 @@ pub async fn show_dashboard(format: OutputFormat) -> Result<(), Box<dyn std::err
         crate::core::network::probe_port_async(primary_ssh_port),
         crate::core::network::probe_port_async(http_port),
     );
-    let endpoints = default_workstation_endpoints(
+    let endpoints = default_desktop_endpoints(
         git_port,
         git_active,
         http_port,
@@ -310,7 +310,7 @@ pub async fn show_dashboard(format: OutputFormat) -> Result<(), Box<dyn std::err
             "enrolled": cloud_creds.is_some(),
             "device_id": cloud_creds.as_ref().map(|c| c.device_id.as_str()),
             "device_name": cloud_creds.as_ref().map(|c| c.name.as_str()),
-            "tenant_id": cloud_creds.as_ref().and_then(|c| c.tenant_id.as_deref()),
+            "workspace_id": cloud_creds.as_ref().and_then(|c| c.workspace_id.as_deref()),
             "endpoint": cloud_creds.as_ref().and_then(|c| c.cloud_url.as_deref())
         },
         "runner": {

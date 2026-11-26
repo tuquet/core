@@ -25,10 +25,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         },
         Some(Commands::Worker { command }) => match command {
-            Some(cmd) => commands::worker::handle(cmd).await,
+            Some(cmd) => commands::daemon::handle(cmd).await,
             None => {
                 let mut cmd = Cli::command();
-                if let Some(sub) = cmd.find_subcommand_mut("worker") {
+                if let Some(sub) = cmd.find_subcommand_mut("daemon") {
                     let _ = sub.print_help();
                 }
                 Ok(())

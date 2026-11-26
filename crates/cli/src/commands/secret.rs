@@ -1,7 +1,7 @@
 //! `opn secret` — Secret Store (local encrypted + cloud, device-portable, zero-knowledge over wire).
 //!
 //! Local : `~/.operon/system/secrets.json` (AES-256-GCM) + `~/.operon/system/.device_key` (X25519).
-//! Cloud : schema `secrets` (Vault KEK -> per-tenant DEK -> sealed to each device).
+//! Cloud : schema `secrets` (Vault KEK -> per-workspace DEK -> sealed to each device).
 //!         Values are XChaCha20-Poly1305 encrypted **client-side**; the server never
 //!         receives a plaintext value. See SPEC-secret-store.
 //!
@@ -13,7 +13,7 @@ use base64::engine::general_purpose::STANDARD as B64;
 use crate::cli::SecretSubcommands;
 use crate::infrastructure::cloud::SecretClient;
 use crate::ui::card::Card;
-use worker::core::secrets::{DeviceKeypair, SecretStore};
+use daemon::core::secrets::{DeviceKeypair, SecretStore};
 
 /// Reads a secret value from a file (`@path`) or stdin (`-`).
 ///
@@ -112,7 +112,7 @@ pub async fn handle(cmd: SecretSubcommands) -> Result<(), Box<dyn std::error::Er
             let client = SecretClient::connect(store.dir()).await?;
             let map = client.pull().await?;
             if map.is_empty() {
-                println!("No secrets stored in Cloud for this tenant.");
+                println!("No secrets stored in Cloud for this workspace.");
                 return Ok(());
             }
             let count = map.len();
@@ -127,7 +127,7 @@ pub async fn handle(cmd: SecretSubcommands) -> Result<(), Box<dyn std::error::Er
             let client = SecretClient::connect(store.dir()).await?;
             let rows = client.remote_list().await?;
             if rows.is_empty() {
-                println!("No secrets stored in Cloud for this tenant.");
+                println!("No secrets stored in Cloud for this workspace.");
             } else {
                 println!("Cloud Secret Store — {} entr(ies):", rows.len());
                 for r in rows {
@@ -142,7 +142,7 @@ pub async fn handle(cmd: SecretSubcommands) -> Result<(), Box<dyn std::error::Er
             let client = SecretClient::connect(store.dir()).await?;
             let n = client.rotate().await?;
             println!(
-                "Rotated tenant DEK — re-encrypted {} value(s) and re-sealed for all devices.",
+                "Rotated workspace DEK — re-encrypted {} value(s) and re-sealed for all devices.",
                 n
             );
         }

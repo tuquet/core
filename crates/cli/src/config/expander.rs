@@ -78,9 +78,9 @@ mod tests {
     #[test]
     fn test_expand_with_existing_env() {
         unsafe {
-            std::env::set_var("TEST_SPECTER_ENV_VAR", "injected_val");
+            std::env::set_var("TEST_OPERON_ENV_VAR", "injected_val");
         }
-        let input = "Prefix_${TEST_SPECTER_ENV_VAR}_Suffix";
+        let input = "Prefix_${TEST_OPERON_ENV_VAR}_Suffix";
         let output = EnvExpander::expand(input);
         assert_eq!(output, "Prefix_injected_val_Suffix");
     }

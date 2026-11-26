@@ -145,7 +145,7 @@ async fn run_cli_update(yes: bool) -> Result<(), Box<dyn std::error::Error>> {
     let daemon_was_online = crate::commands::desk::is_daemon_healthy(daemon_port).await;
     if daemon_was_online {
         clack_step_info("Stopping active daemon before binary replacement...");
-        let _ = crate::commands::worker::stop_daemon(true).await;
+        let _ = crate::commands::daemon::stop_daemon(true).await;
         for _ in 0..20 {
             if !crate::commands::desk::is_daemon_healthy(daemon_port).await {
                 break;
@@ -169,7 +169,7 @@ async fn run_cli_update(yes: bool) -> Result<(), Box<dyn std::error::Error>> {
         if should_restart {
             crate::commands::desk::ensure_daemon_online(daemon_port).await?;
         } else {
-            clack_step_info("Daemon stopped; start later with 'opn worker start -d'.");
+            clack_step_info("Daemon stopped; start later with 'opn daemon start -d'.");
         }
     }
 

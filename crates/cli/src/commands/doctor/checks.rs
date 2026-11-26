@@ -6,7 +6,7 @@ use crate::core::network::find_executable;
 use crate::core::network::probe_port;
 use crate::ui::{
     Card, Column, Table, badge_error, badge_online, badge_warn, create_network_topology_card,
-    default_workstation_endpoints,
+    default_desktop_endpoints,
 };
 
 pub fn check_tools(missing_actions: &mut Vec<String>) -> (Table, bool) {
@@ -322,7 +322,7 @@ pub fn check_network_topology() -> Card {
     let http_port = 8118;
     let http_active = probe_port(http_port);
 
-    let endpoints = default_workstation_endpoints(
+    let endpoints = default_desktop_endpoints(
         git_port,
         git_active,
         http_port,
@@ -335,7 +335,7 @@ pub fn check_network_topology() -> Card {
     create_network_topology_card(
         "NETWORK TOPOLOGY & LISTENERS",
         &endpoints,
-        Some("Tunnels run on demand. Start with 'tunnel on' or 'opn runner start'"),
+        Some("Tunnels run on demand. Start with 'tunnel on' or 'opn daemon start'"),
     )
 }
 
@@ -351,7 +351,7 @@ pub fn check_verdict(
         verdict_card.with_badge(badge_online("ALL SYSTEMS OPERATIONAL"));
         verdict_card
             .add_line("All required ecosystem dependencies and runtimes are properly provisioned.");
-        verdict_card.add_line("Your workstation is 100% ready for autonomous browser workflows, antidetect spoofing, and gateway meshes.");
+        verdict_card.add_line("Your desktop is 100% ready for autonomous browser workflows, antidetect spoofing, and gateway meshes.");
         verdict_card.with_footer(
             "Tip: Run 'operon' to launch interactive shell, or 'opn status' for dashboard.",
         );

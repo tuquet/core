@@ -4,11 +4,11 @@
 //! PostgREST in this project only exposes the `public` schema (probed: `PGRST106`),
 //! so the supported contract is the RPC layer defined in
 //! `cloud/supabase/plugins/automation/install.sql` (§7.5). Those functions are
-//! `SECURITY INVOKER`, so RLS still applies (`is_tenant_member` for reads,
-//! `automation:workflows:manage` / tenant admin for writes).
+//! `SECURITY INVOKER`, so RLS still applies (`is_workspace_member` for reads,
+//! `automation:workflows:manage` / workspace admin for writes).
 //!
 //! Replaces the removed local SQLite workflow store (rip-and-replace): the Cloud
-//! table is the single source of truth, shared with the workstation console.
+//! table is the single source of truth, shared with the desktop console.
 
 use serde_json::{Value, json};
 
@@ -77,7 +77,7 @@ pub struct CloudWorkflowRepository {
     base: String,
     api_key: String,
     token: String,
-    tenant_id: String,
+    workspace_id: String,
 }
 
 impl CloudWorkflowRepository {
@@ -92,10 +92,10 @@ impl CloudWorkflowRepository {
             .clone()
             .filter(|t| !t.trim().is_empty())
             .ok_or_else(|| "No user session found. Run `opn auth login` first.".to_string())?;
-        let tenant_id = creds
-            .tenant_id
+        let workspace_id = creds
+            .workspace_id
             .clone()
-            .ok_or_else(|| "No tenant bound. Run `opn auth login` again.".to_string())?;
+            .ok_or_else(|| "No workspace bound. Run `opn auth login` again.".to_string())?;
         let base = resolve_supabase_url(config.cloud_url.as_deref(), creds.cloud_url.as_deref())?;
 
         Ok(Self {
@@ -103,7 +103,7 @@ impl CloudWorkflowRepository {
             base: base.trim_end_matches('/').to_string(),
             api_key: resolve_supabase_anon_key(creds.api_key.as_deref())?,
             token,
-            tenant_id,
+            workspace_id,
         })
     }
 
@@ -179,7 +179,7 @@ impl CloudWorkflowRepository {
             .rpc(
                 "workflow_upsert",
                 &json!({
-                    "p_tenant": self.tenant_id,
+                    "p_workspace": self.workspace_id,
                     "p_target": target,
                     "p_name": name,
                     "p_description": description,

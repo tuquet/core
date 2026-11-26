@@ -3,9 +3,9 @@ use serde_json::json;
 pub async fn execute_runner_probe() -> Result<String, String> {
     let manifest = json!({
         "protocol": "operon.automation.v1",
-        "name": "worker",
+        "name": "daemon",
         "version": env!("CARGO_PKG_VERSION"),
-        "engine": "chromium-extension-worker",
+        "engine": "chromium-extension-daemon",
         "status": "ready",
         "capabilities": [
             "browser:chromium",

@@ -17,14 +17,14 @@
 
 ## Overview
 
-Operon is an open-source execution runtime and browser orchestration platform. Built with high-concurrency Rust and backed by a Supabase control plane, Operon enables operators and automation agents to coordinate remote worker nodes, manage sandboxed browser sessions without fingerprint leaks, and execute automated browser workflows reliably.
+Operon is an open-source execution runtime and browser orchestration platform. Built with high-concurrency Rust and backed by a Supabase control plane, Operon enables operators and automation agents to coordinate remote daemon nodes, manage sandboxed browser sessions without fingerprint leaks, and execute automated browser workflows reliably.
 
 ### Core subsystems
 
-- **Worker daemon (`crates/worker`)**: Background process supervisor connecting workstations and remote VPS nodes over authenticated WebSockets.
+- **Worker daemon (`crates/daemon`)**: Background process supervisor connecting desktops and remote VPS nodes over authenticated WebSockets.
 - **Browser sandbox (`crates/browser`)**: Profile manager, deterministic PRNG hardware masking, and native CDP automation engine.
-- **Admin workstation (`console/`)**: Administrative web console and desktop application built with Vue 3, Vite, Tailwind CSS, and Shadcn UI.
-- **Control plane (`cloud/`)**: Supabase-powered backend providing multi-tenant isolation, database schemas, and row-level security (RLS).
+- **Admin desktop (`console/`)**: Administrative web console and desktop application built with Vue 3, Vite, Tailwind CSS, and Shadcn UI.
+- **Control plane (`cloud/`)**: Supabase-powered backend providing multi-workspace isolation, database schemas, and row-level security (RLS).
 - **Network gateway**: Dynamic SOCKS5 (`1080`) and embedded HTTP (`8118`) forwarder routing traffic through encrypted mesh tunnels.
 
 ### Architecture & Specs
@@ -39,7 +39,7 @@ Operon is an open-source execution runtime and browser orchestration platform. B
 operon/
 ├── crates/
 │   ├── cli/       # Canonical opn CLI toolchain
-│   ├── worker/    # Workstation daemon and process supervisor
+│   ├── daemon/    # Desktop daemon and process supervisor
 │   ├── browser/   # Stealth Chromium launcher and hardware sandbox
 │   └── faker/     # Synthetic identity generation engine
 ├── console/       # Administrative web console and Tauri desktop app
@@ -93,7 +93,7 @@ docker compose up -d
 
    # Connect to Cloud Control Plane & start Worker with auto-claim loop
    cargo run -p operon --bin opn -- auth login -e admin@operon.dev -p TestPassword123!
-   cargo run -p operon --bin opn -- worker start --cloud --claim
+   cargo run -p operon --bin opn -- daemon start --cloud --claim
    ```
    *For production binaries, build via `cargo build --release -p operon`. The executable will be generated at `target/release/opn` (or `opn.exe` on Windows).*
 
@@ -128,7 +128,7 @@ Operon implements a zero-intermediate-storage design. All jobs, schedules, and w
 3. **Cloud Auto-Claim Loop**:
    ```bash
    # Terminal 2: Run Worker Daemon in auto-claim mode
-   cargo run -p operon --bin opn -- worker start --cloud --claim
+   cargo run -p operon --bin opn -- daemon start --cloud --claim
    ```
    Worker periodically polls `automation_claim_jobs` over secure RPC, locks assigned tasks, spawns the sandboxed browser runtime, communicates via isolated CDP sockets (`no_proxy`), and writes real-time logs and completion statuses back to Supabase.
 
@@ -142,8 +142,8 @@ The primary CLI executable is `opn` (invoked directly as `opn` when installed or
 # Check runtime health, storage pillars, and dependencies
 opn doctor
 
-# Start the background worker daemon with Supabase cloud claim loop
-opn worker start --cloud --claim
+# Start the background daemon daemon with Supabase cloud claim loop
+opn daemon start --cloud --claim
 
 # Launch an isolated browser profile with proxy routing
 opn browser launch "Campaign-US" --proxy socks5://127.0.0.1:1080

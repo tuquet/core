@@ -22,7 +22,7 @@
     },
     {
       "name": "Worker Engine",
-      "path": "worker"
+      "path": "daemon"
     },
     {
       "name": "UI Component Library",

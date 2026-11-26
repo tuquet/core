@@ -113,7 +113,7 @@ pub fn extract_portable_binary(zip_bytes: &[u8]) -> Result<Vec<u8>, String> {
             .unwrap_or("")
             .to_string();
         if base_name.eq_ignore_ascii_case("Operon.exe")
-            || base_name.eq_ignore_ascii_case("workstation.exe")
+            || base_name.eq_ignore_ascii_case("desktop.exe")
         {
             let mut buf = Vec::new();
             entry

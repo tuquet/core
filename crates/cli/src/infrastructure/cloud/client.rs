@@ -48,7 +48,7 @@ impl CloudApiClient {
         let hostname = custom_name.unwrap_or("").trim();
         let default_host = std::env::var("COMPUTERNAME")
             .or_else(|_| std::env::var("HOSTNAME"))
-            .unwrap_or_else(|_| "PC-WORKSTATION".to_string());
+            .unwrap_or_else(|_| "PC-DESKTOP".to_string());
         let device_name = if hostname.is_empty() {
             default_host
         } else {
@@ -82,7 +82,7 @@ impl CloudApiClient {
             "p_os_info": os_info,
             "p_cpu_cores": cpu_cores,
             "p_ram_mb": ram_mb,
-            "p_capabilities": ["chromium", "automation", "gui", "worker"],
+            "p_capabilities": ["chromium", "automation", "gui", "daemon"],
             "p_metadata": metadata,
             "p_enrollment_token": enrollment_token
         });
@@ -92,7 +92,7 @@ impl CloudApiClient {
             cloud_url.trim_end_matches('/')
         );
         info!(
-            "[CloudReporter] Enrolling workstation with Cloud at: {}",
+            "[CloudReporter] Enrolling desktop with Cloud at: {}",
             target_url
         );
 
@@ -126,8 +126,8 @@ impl CloudApiClient {
             .and_then(|v| v.as_str())
             .ok_or("Missing device_token in enrollment response")?
             .to_string();
-        let tenant_id = body
-            .get("tenant_id")
+        let workspace_id = body
+            .get("workspace_id")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
         let assigned_name = body
@@ -140,7 +140,7 @@ impl CloudApiClient {
             cloud_url: Some(cloud_url.to_string()),
             device_id,
             device_token,
-            tenant_id,
+            workspace_id,
             name: assigned_name,
             api_key: Some(anon_key),
             machine_fingerprint: fingerprint,
@@ -150,10 +150,10 @@ impl CloudApiClient {
             access_token: bearer_token.map(|s| s.to_string()),
             refresh_token: None,
             token_expires_at: None,
-            tenant_slug: None,
-            tenant_name: None,
-            tenant_role: None,
-            available_tenants: None,
+            workspace_slug: None,
+            workspace_name: None,
+            workspace_role: None,
+            available_workspaces: None,
         })
     }
 }

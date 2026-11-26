@@ -80,9 +80,9 @@ pub struct CloudStatusResponse {
     pub cloud_url: Option<String>,
     /// Whether this machine is enrolled with a device ID
     pub enrolled: bool,
-    /// Persistent workstation device ID
+    /// Persistent desktop device ID
     pub device_id: Option<String>,
-    /// Enrolled workstation name
+    /// Enrolled desktop name
     pub device_name: Option<String>,
     /// Machine hardware fingerprint
     pub machine_fingerprint: String,
@@ -90,14 +90,14 @@ pub struct CloudStatusResponse {
     pub heartbeat_interval_secs: u64,
     /// Authenticated operator email
     pub user_email: Option<String>,
-    /// Active tenant workspace ID
-    pub tenant_id: Option<String>,
-    /// Active tenant workspace vanity slug
-    pub tenant_slug: Option<String>,
-    /// Active tenant workspace display name
-    pub tenant_name: Option<String>,
+    /// Active workspace workspace ID
+    pub workspace_id: Option<String>,
+    /// Active workspace workspace vanity slug
+    pub workspace_slug: Option<String>,
+    /// Active workspace workspace display name
+    pub workspace_name: Option<String>,
     /// Operator role within active workspace
-    pub tenant_role: Option<String>,
+    pub workspace_role: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
@@ -124,7 +124,7 @@ pub struct CloudSyncResponse {
 pub struct CloudLoginRequest {
     /// Cloud Base URL (e.g. "https://dswhacsoaxgpfnkaxnhz.supabase.co")
     pub cloud_url: Option<String>,
-    /// Organization / Tenant enrollment token or user JWT
+    /// Organization / Workspace enrollment token or user JWT
     pub token: Option<String>,
     /// Optional friendly device name
     pub name: Option<String>,
@@ -137,7 +137,7 @@ pub struct CloudLoginRequest {
     /// Pre-supplied 6-digit OTP code
     pub code: Option<String>,
     /// Pre-select target workspace slug or ID
-    pub tenant: Option<String>,
+    pub workspace: Option<String>,
     /// Optional custom Supabase API key
     pub api_key: Option<String>,
 }
@@ -152,14 +152,14 @@ pub struct CloudLoginResponse {
     pub enrolled: bool,
     /// Registered device ID
     pub device_id: String,
-    /// Tenant or organization ID
-    pub tenant_id: Option<String>,
-    /// Active tenant slug
-    pub tenant_slug: Option<String>,
-    /// Active tenant name
-    pub tenant_name: Option<String>,
-    /// Operator role in active tenant
-    pub tenant_role: Option<String>,
+    /// Workspace or organization ID
+    pub workspace_id: Option<String>,
+    /// Active workspace slug
+    pub workspace_slug: Option<String>,
+    /// Active workspace name
+    pub workspace_name: Option<String>,
+    /// Operator role in active workspace
+    pub workspace_role: Option<String>,
     /// Operator email
     pub user_email: Option<String>,
     /// Device name
@@ -205,8 +205,8 @@ pub struct DesktopAuthCallbackParams {
     pub refresh_token: Option<String>,
     /// CSRF state token
     pub state: Option<String>,
-    /// Selected Tenant / Workspace ID
-    pub tenant_id: Option<String>,
+    /// Selected Workspace / Workspace ID
+    pub workspace_id: Option<String>,
     /// Machine hostname
     pub machine_name: Option<String>,
 }
@@ -221,6 +221,6 @@ pub struct DesktopAuthCallbackResponse {
     pub message: String,
     /// Authenticated user email
     pub user_email: Option<String>,
-    /// Active tenant identifier
-    pub tenant_id: Option<String>,
+    /// Active workspace identifier
+    pub workspace_id: Option<String>,
 }

@@ -1,11 +1,11 @@
-use crate::core::readiness::{ReadinessState, WorkstationReadiness};
+use crate::core::readiness::{DesktopReadiness, ReadinessState};
 use std::error::Error;
 
 /// Renders minimal single-line status notice without ASCII box frames or interactive menus
-pub async fn handle_readiness_gate(readiness: &WorkstationReadiness) -> Result<(), Box<dyn Error>> {
+pub async fn handle_readiness_gate(readiness: &DesktopReadiness) -> Result<(), Box<dyn Error>> {
     match readiness.state {
         ReadinessState::Fresh => {
-            eprintln!("⚠ workstation not onboarded — run `opn setup` to initialize");
+            eprintln!("⚠ desktop not onboarded — run `opn setup` to initialize");
             std::process::exit(1);
         }
         ReadinessState::Degraded => {

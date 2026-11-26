@@ -194,10 +194,11 @@ pub async fn use_runtime(
             version
         )));
     }
-    browser::set_active_version(&version)
-        .map_err(|e| AutomationError::Internal(e.to_string()))?;
+    browser::set_active_version(&version).map_err(|e| AutomationError::Internal(e.to_string()))?;
 
-    let _ = state.tx.send(json!({ "type": "settings_updated" }).to_string());
+    let _ = state
+        .tx
+        .send(json!({ "type": "settings_updated" }).to_string());
 
     Ok(Json(RuntimeActionResponse {
         success: true,

@@ -1,9 +1,9 @@
 //! Cloud Secret Store client — device-authenticated sync of `{{secrets@name}}` values.
 //!
-//! Shared by the `opn secret` CLI command **and** the workstation TUI (`opn tui` → SECRETS tab).
+//! Shared by the `opn secret` CLI command **and** the desktop TUI (`opn tui` → SECRETS tab).
 //!
 //! Zero-knowledge over wire: values are XChaCha20-Poly1305 encrypted client-side with the
-//! tenant DEK; the DEK itself is received as a libsodium sealed box (X25519) bound to this
+//! workspace DEK; the DEK itself is received as a libsodium sealed box (X25519) bound to this
 //! device's public key. The server never sees a plaintext value.
 
 use base64::Engine as _;
@@ -13,7 +13,7 @@ use std::path::Path;
 
 use super::credential_store::{CredentialStore, resolve_supabase_anon_key, resolve_supabase_url};
 use crate::config::AppConfig;
-use worker::core::secrets::{DeviceKeypair, aead_decrypt, aead_encrypt, unseal_box};
+use daemon::core::secrets::{DeviceKeypair, aead_decrypt, aead_encrypt, unseal_box};
 
 fn decode_b64_clean(s: &str) -> Result<Vec<u8>, String> {
     B64.decode(s.replace(['\n', '\r', ' '], ""))
@@ -42,7 +42,7 @@ impl SecretClient {
     pub async fn connect(store_dir: &Path) -> Result<Self, String> {
         let cfg = AppConfig::load();
         let creds = CredentialStore::load(&cfg.data_dir).await.ok_or_else(|| {
-            "Workstation not enrolled with Cloud. Run `opn auth login` first.".to_string()
+            "Desktop not enrolled with Cloud. Run `opn auth login` first.".to_string()
         })?;
 
         let cloud_url = resolve_supabase_url(cfg.cloud_url.as_deref(), creds.cloud_url.as_deref())?;
@@ -94,7 +94,7 @@ impl SecretClient {
         Ok(serde_json::from_str(&text).unwrap_or(serde_json::Value::Null))
     }
 
-    /// Registers this device's public key (idempotent) and returns the tenant DEK.
+    /// Registers this device's public key (idempotent) and returns the workspace DEK.
     pub async fn register_and_get_dek(&self) -> Result<[u8; 32], String> {
         let raw = self
             .rpc(
@@ -136,7 +136,7 @@ impl SecretClient {
         Ok(n)
     }
 
-    /// Fetches and decrypts all secrets for this tenant.
+    /// Fetches and decrypts all secrets for this workspace.
     pub async fn pull(&self) -> Result<BTreeMap<String, String>, String> {
         let dek = self.register_and_get_dek().await?;
         let rows = self.rpc("secret_fetch", serde_json::json!({})).await?;
@@ -177,7 +177,7 @@ impl SecretClient {
             .collect())
     }
 
-    /// Rotates the tenant DEK (server re-encrypts values, re-seals for all devices).
+    /// Rotates the workspace DEK (server re-encrypts values, re-seals for all devices).
     pub async fn rotate(&self) -> Result<i64, String> {
         let raw = self.rpc("secret_rotate", serde_json::json!({})).await?;
         Ok(raw.as_i64().unwrap_or(0))

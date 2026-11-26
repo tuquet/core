@@ -72,7 +72,7 @@ pub async fn ensure_browser_worker(
 
     // Zero extension leaks: Pure native CDP controls the antidetect browser directly
     let ext_path_strings: Vec<String> = Vec::new();
-    tracing::info!("[submit_job] Launching browser worker with zero extensions (pure native CDP)");
+    tracing::info!("[submit_job] Launching browser daemon with zero extensions (pure native CDP)");
 
     let headless = headless_opt.unwrap_or(app_settings.browser.headless);
 
@@ -122,7 +122,7 @@ pub async fn ensure_browser_worker(
         }
         Err(e) => {
             eprintln!(
-                "Failed to launch browser worker (maybe already running): {}",
+                "Failed to launch browser daemon (maybe already running): {}",
                 e
             );
             if browser_registry()

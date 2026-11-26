@@ -102,7 +102,7 @@ pub fn handle_tools_list(id: Option<Value>) -> JsonRpcResponse {
         },
         {
             "name": "worker_probe",
-            "description": "Probe local host hardware specs (CPU cores, memory), display capabilities, and worker automation driver capabilities.",
+            "description": "Probe local host hardware specs (CPU cores, memory), display capabilities, and daemon automation driver capabilities.",
             "inputSchema": {
                 "type": "object",
                 "properties": {}
@@ -110,7 +110,7 @@ pub fn handle_tools_list(id: Option<Value>) -> JsonRpcResponse {
         },
         {
             "name": "cloud_whoami",
-            "description": "Get current Cloud workstation pairing identity, device ID, tenant, and endpoint configuration.",
+            "description": "Get current Cloud desktop pairing identity, device ID, workspace, and endpoint configuration.",
             "inputSchema": {
                 "type": "object",
                 "properties": {}

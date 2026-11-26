@@ -88,7 +88,7 @@ fi
 
 for candidate in "${TARGET_EXE}" "${ALIAS_EXE}"; do
     if [ -x "${candidate}" ]; then
-        "${candidate}" worker stop --force >/dev/null 2>&1 || true
+        "${candidate}" daemon stop --force >/dev/null 2>&1 || true
     fi
 done
 
@@ -109,7 +109,7 @@ if [ "$NO_DAEMON" -eq 0 ]; then
     if [ "$PLATFORM" = "macos" ]; then
         PLIST_DIR="${HOME}/Library/LaunchAgents"
         PLIST_PATH="${PLIST_DIR}/com.operon.daemon.plist"
-        rm -f "${PLIST_DIR}/com.operon.local-bridge.plist"
+        rm -f "${PLIST_DIR}/com.operon.local-bridge.plist" # legacy plist cleanup
         mkdir -p "${PLIST_DIR}" "${OPERON_DIR}/logs"
         cat > "${PLIST_PATH}" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -120,7 +120,7 @@ if [ "$NO_DAEMON" -eq 0 ]; then
     <key>ProgramArguments</key>
     <array>
         <string>${TARGET_EXE}</string>
-        <string>worker</string>
+        <string>daemon</string>
         <string>start</string>
         <string>-H</string><string>127.0.0.1</string>
         <string>-p</string><string>8765</string>
@@ -133,7 +133,7 @@ if [ "$NO_DAEMON" -eq 0 ]; then
 </plist>
 EOF
         launchctl unload "${PLIST_PATH}" >/dev/null 2>&1 || true
-        launchctl load "${PLIST_PATH}" >/dev/null 2>&1 || "${TARGET_EXE}" worker start -H 127.0.0.1 -p 8765 -d
+        launchctl load "${PLIST_PATH}" >/dev/null 2>&1 || "${TARGET_EXE}" daemon start -H 127.0.0.1 -p 8765 -d
     elif command -v systemctl >/dev/null 2>&1 && systemctl --user status >/dev/null 2>&1; then
         UNIT_DIR="${HOME}/.config/systemd/user"
         rm -f "${UNIT_DIR}/operon-bridge.service"
@@ -144,7 +144,7 @@ Description=Operon Local Daemon
 After=network.target
 
 [Service]
-ExecStart=${TARGET_EXE} worker start -H 127.0.0.1 -p 8765
+ExecStart=${TARGET_EXE} daemon start -H 127.0.0.1 -p 8765
 Restart=always
 RestartSec=3
 
@@ -152,9 +152,9 @@ RestartSec=3
 WantedBy=default.target
 EOF
         systemctl --user daemon-reload
-        systemctl --user enable --now operon-daemon.service >/dev/null 2>&1 || "${TARGET_EXE}" worker start -H 127.0.0.1 -p 8765 -d
+        systemctl --user enable --now operon-daemon.service >/dev/null 2>&1 || "${TARGET_EXE}" daemon start -H 127.0.0.1 -p 8765 -d
     else
-        "${TARGET_EXE}" worker start -H 127.0.0.1 -p 8765 -d
+        "${TARGET_EXE}" daemon start -H 127.0.0.1 -p 8765 -d
     fi
     echo "[operon] Daemon started at http://127.0.0.1:8765"
 fi

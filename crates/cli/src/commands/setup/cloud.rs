@@ -5,7 +5,7 @@ pub async fn run(interactive: bool) -> Result<(), Box<dyn std::error::Error>> {
     let creds = CredentialStore::load("").await;
     if let Some(c) = creds {
         clack_step_ok(format!(
-            "Workstation already paired with Cloud (Device: {})",
+            "Desktop already paired with Cloud (Device: {})",
             c.device_id
         ));
         return Ok(());
@@ -13,7 +13,7 @@ pub async fn run(interactive: bool) -> Result<(), Box<dyn std::error::Error>> {
 
     if interactive && is_interactive_tty() {
         let want_login = clack_confirm(
-            "Would you like to authenticate and pair workstation with TQ Cloud now?",
+            "Would you like to authenticate and pair desktop with TQ Cloud now?",
             false,
         )?;
         if want_login.unwrap_or(false) {

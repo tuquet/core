@@ -2,14 +2,14 @@
 //! Single Source of Truth for system feedback, errors, and lifecycle events.
 
 /// Daemon & Server lifecycle messages
-pub const MSG_SERVER_STARTING: &str = "Starting API & Worker Daemon...";
-pub const MSG_SERVER_STOPPING: &str = "Stopping existing worker daemon...";
-pub const MSG_SERVER_STOPPED: &str = "Worker daemon has been gracefully terminated.";
-pub const MSG_SERVER_RESTARTING: &str = "Restarting worker daemon...";
+pub const MSG_SERVER_STARTING: &str = "Starting Local Daemon...";
+pub const MSG_SERVER_STOPPING: &str = "Stopping existing daemon...";
+pub const MSG_SERVER_STOPPED: &str = "Daemon has been gracefully terminated.";
+pub const MSG_SERVER_RESTARTING: &str = "Restarting daemon...";
 pub const MSG_SHUTDOWN_SIGNAL: &str =
     "Received termination signal (Ctrl+C). Initiating graceful shutdown...";
-pub const MSG_SHUTDOWN_CLEAN: &str = "Worker daemon exited cleanly.";
-pub const MSG_DAEMON_NO_PROCESS: &str = "No active worker daemon process found on this machine.";
+pub const MSG_SHUTDOWN_CLEAN: &str = "Daemon exited cleanly.";
+pub const MSG_DAEMON_NO_PROCESS: &str = "No active daemon process found on this machine.";
 
 /// Job execution messages
 pub const MSG_JOB_RUNNING: &str = "Executing job specification...";
@@ -18,9 +18,9 @@ pub const MSG_JOB_FAILED: &str = "Job execution failed.";
 pub const MSG_JOB_CANCELLED: &str = "Job execution cancelled by signal.";
 
 /// Cloud enrollment & authentication messages
-pub const MSG_ENROLLMENT_SUCCESS: &str = "Workstation successfully enrolled with Cloud!";
+pub const MSG_ENROLLMENT_SUCCESS: &str = "Desktop successfully enrolled with Cloud!";
 pub const MSG_ENROLLMENT_FAILED: &str = "Cloud device enrollment failed.";
-pub const MSG_NOT_ENROLLED: &str = "Workstation not enrolled with Cloud.";
+pub const MSG_NOT_ENROLLED: &str = "Desktop not enrolled with Cloud.";
 pub const MSG_IDENTITY_PURGED: &str = "Local device identity purged.";
 pub const MSG_REVOCATION_DETECTED: &str =
     "Cloud device identity revocation detected! Initiating self-healing...";

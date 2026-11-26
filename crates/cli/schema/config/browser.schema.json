@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "SpecterBrowserConfig",
+  "title": "OperonBrowserConfig",
   "description": "Configuration schema for Dedicated Isolated Chromium Runtime (~/.operon/browser/browser.json)",
   "type": "object",
   "properties": {

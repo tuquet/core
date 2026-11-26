@@ -113,7 +113,7 @@ impl Default for RunnerState {
 pub struct CloudState {
     pub enrolled: bool,
     pub host_name: String,
-    pub tenant_name: String,
+    pub workspace_name: String,
     pub cloud_url: String,
 }
 
@@ -121,8 +121,8 @@ impl Default for CloudState {
     fn default() -> Self {
         Self {
             enrolled: false,
-            host_name: "WORKSTATION".to_string(),
-            tenant_name: "Personal Workspace".to_string(),
+            host_name: "DESKTOP".to_string(),
+            workspace_name: "Personal Workspace".to_string(),
             cloud_url: "Local Only".to_string(),
         }
     }
@@ -262,14 +262,14 @@ impl TuiState {
             crate::infrastructure::cloud_reporter::CloudReporter::whoami(&config.data_dir).await;
         let hostname = std::env::var("COMPUTERNAME")
             .or_else(|_| std::env::var("HOSTNAME"))
-            .unwrap_or_else(|_| "WORKSTATION".to_string());
+            .unwrap_or_else(|_| "DESKTOP".to_string());
 
         if let Some(creds) = cloud_creds {
             self.cloud = CloudState {
                 enrolled: true,
                 host_name: creds.name,
-                tenant_name: creds
-                    .tenant_id
+                workspace_name: creds
+                    .workspace_id
                     .unwrap_or_else(|| "Enterprise Corp".to_string()),
                 cloud_url: creds.cloud_url.unwrap_or_else(|| "Cloud Mesh".to_string()),
             };
@@ -277,7 +277,7 @@ impl TuiState {
             self.cloud = CloudState {
                 enrolled: false,
                 host_name: hostname,
-                tenant_name: "Personal Workspace".to_string(),
+                workspace_name: "Personal Workspace".to_string(),
                 cloud_url: "Local Only (Unpaired)".to_string(),
             };
         }

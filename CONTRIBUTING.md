@@ -10,7 +10,7 @@ Before setting up the repository locally, ensure you have the following installe
 - **Rust & Cargo**: Latest stable toolchain (`rustup update`, edition 2024 recommended).
 - **Node.js**: v20 or higher.
 - **pnpm**: v9 or higher (`npm install -g pnpm`).
-- **Docker & Docker Compose**: Recommended for running the control plane and containerized worker nodes.
+- **Docker & Docker Compose**: Recommended for running the control plane and containerized daemon nodes.
 
 ---
 
@@ -49,7 +49,7 @@ Before setting up the repository locally, ensure you have the following installe
 ## 📝 Commit Conventions
 
 We strictly follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
-- `feat:` Introduce a new feature (e.g. `feat(worker): add dynamic heartbeat scaling`).
+- `feat:` Introduce a new feature (e.g. `feat(daemon): add dynamic heartbeat scaling`).
 - `fix:` Fix a bug or regression (e.g. `fix(browser): correct profile locking mechanism`).
 - `docs:` Documentation improvements (e.g. `docs: update CLI quickstart`).
 - `chore:` Maintenance tasks, dependency bumps, or config adjustments.
@@ -67,7 +67,7 @@ We strictly follow the [Conventional Commits](https://www.conventionalcommits.or
 2. Verify all tests and type checks pass locally before opening a PR:
    ```bash
    cargo test --workspace
-   cd console && pnpm --filter @operon/workstation typecheck && cd ..
+   cd console && pnpm --filter @operon/desktop typecheck && cd ..
    ```
 3. Open a Pull Request against `main` on GitHub with a clear description of the problem solved and testing steps.
 4. Maintain documentation integrity: Ensure new flags or public functions are adequately documented.

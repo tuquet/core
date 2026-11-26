@@ -5,7 +5,7 @@
       "label": "local: <daemon> start",
       "type": "shell",
       "command": "cargo",
-      "args": ["run", "--bin", "opn", "--", "worker", "start", "-H", "127.0.0.1", "-p", "8765"],
+      "args": ["run", "--bin", "opn", "--", "daemon", "start", "-H", "127.0.0.1", "-p", "8765"],
       "isBackground": true,
       "group": {
         "kind": "build",
@@ -22,7 +22,7 @@
       "label": "local: <daemon> status",
       "type": "shell",
       "command": "cargo",
-      "args": ["run", "--bin", "opn", "--", "worker", "status"],
+      "args": ["run", "--bin", "opn", "--", "daemon", "status"],
       "presentation": {
         "reveal": "always",
         "panel": "shared",
@@ -34,7 +34,7 @@
       "label": "local: <daemon> stop",
       "type": "shell",
       "command": "cargo",
-      "args": ["run", "--bin", "opn", "--", "worker", "stop"],
+      "args": ["run", "--bin", "opn", "--", "daemon", "stop"],
       "presentation": {
         "reveal": "always",
         "panel": "shared",
@@ -168,10 +168,10 @@
       "problemMatcher": ["$rustc"]
     },
     {
-      "label": "local: <worker> test",
+      "label": "local: <daemon> test",
       "type": "shell",
       "command": "cargo",
-      "args": ["test", "-p", "worker"],
+      "args": ["test", "-p", "daemon"],
       "group": "test",
       "presentation": {
         "reveal": "always",

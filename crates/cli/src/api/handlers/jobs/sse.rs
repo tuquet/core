@@ -15,9 +15,9 @@ use crate::core::browser::worker_coordinator::connected_browsers;
 #[utoipa::path(
     tag = "Jobs",
     get,
-    path = "/api/v1/internal/worker/events",
+    path = "/api/v1/internal/daemon/events",
     operation_id = "worker_sse",
-    summary = "Subscribe to worker event stream (SSE)",
+    summary = "Subscribe to daemon event stream (SSE)",
     description = "Establishes a long-lived Server-Sent Events (SSE) connection used by browser workers to receive workflow job dispatches and cancellation commands.",
     params(
         ("browserId" = Option<String>, Query, description = "Target browser instance identifier (defaults to 'daemon_worker')")

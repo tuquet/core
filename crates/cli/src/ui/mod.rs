@@ -28,7 +28,7 @@ pub use response::{
 };
 pub use table::{
     Column, NetworkEndpoint, Table, TabularRow, create_network_topology_card, create_tabular_card,
-    default_workstation_endpoints,
+    default_desktop_endpoints,
 };
 
 #[cfg(test)]
@@ -37,15 +37,8 @@ mod tests {
 
     #[test]
     fn test_create_network_topology_card_standby() {
-        let endpoints = default_workstation_endpoints(
-            1080,
-            false,
-            8118,
-            false,
-            2222,
-            false,
-            Some((8765, false)),
-        );
+        let endpoints =
+            default_desktop_endpoints(1080, false, 8118, false, 2222, false, Some((8765, false)));
         assert_eq!(endpoints.len(), 4);
 
         let card = create_network_topology_card("NETWORK TOPOLOGY & LISTENERS", &endpoints, None);
@@ -73,7 +66,7 @@ mod tests {
 
     #[test]
     fn test_create_network_topology_card_active() {
-        let endpoints = default_workstation_endpoints(1080, true, 8118, false, 2222, true, None);
+        let endpoints = default_desktop_endpoints(1080, true, 8118, false, 2222, true, None);
         assert_eq!(endpoints.len(), 3);
 
         let card = create_network_topology_card(
@@ -101,7 +94,7 @@ mod tests {
     fn test_create_tabular_card_generic() {
         let rows = vec![
             TabularRow::new(
-                "Workstation",
+                "Desktop",
                 "NODE-LOCAL",
                 "Local Node Host",
                 badge_online("READY"),
@@ -124,7 +117,7 @@ mod tests {
         let rendered = card.render();
         assert!(rendered.contains("SYSTEM & CLOUD TOPOLOGY"));
         assert!(rendered.contains("PROD"));
-        assert!(rendered.contains("Workstation"));
+        assert!(rendered.contains("Desktop"));
         assert!(rendered.contains("NODE-LOCAL"));
         assert!(rendered.contains("Local Node Host"));
         assert!(rendered.contains("READY"));

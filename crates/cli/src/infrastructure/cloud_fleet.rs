@@ -292,10 +292,10 @@ impl CloudFleetOrchestrator {
             Some(c) => c,
             None => {
                 eprintln!(
-                    "\n{} Workstation not enrolled with Cloud.",
+                    "\n{} Desktop not enrolled with Cloud.",
                     badge_error("AUTH ERROR")
                 );
-                eprintln!("Run 'opn worker enroll' or login to configure device credentials.\n");
+                eprintln!("Run 'opn daemon enroll' or login to configure device credentials.\n");
                 return Err("Missing cloud device credentials".into());
             }
         };

@@ -13,8 +13,8 @@ pub async fn handle_profile_cloud(
         Some(c) => c,
         None => {
             crate::ui::Notify::error(crate::constants::MSG_NOT_ENROLLED);
-            eprintln!("Run 'opn login' to authenticate and pair your workstation first.\n");
-            return Err("Workstation not enrolled with Cloud".into());
+            eprintln!("Run 'opn login' to authenticate and pair your desktop first.\n");
+            return Err("Desktop not enrolled with Cloud".into());
         }
     };
 
@@ -64,8 +64,8 @@ pub async fn handle_profile_cloud(
             header_card.with_badge(badge_online(&format!("{} FLEET PROFILES", browsers.len())));
             header_card.with_min_width(74);
             header_card.add_kv(
-                "Tenant ID",
-                creds.tenant_id.as_deref().unwrap_or("Personal"),
+                "Workspace ID",
+                creds.workspace_id.as_deref().unwrap_or("Personal"),
             );
             header_card.add_kv("Cloud Endpoint", cloud_url);
             header_card.with_footer(
@@ -78,7 +78,7 @@ pub async fn handle_profile_cloud(
                 let mut empty_card = Card::new("NO CLOUD PROFILES");
                 empty_card.with_badge(badge_warn("EMPTY"));
                 empty_card.with_min_width(74);
-                empty_card.add_line("No browser profiles found in current cloud tenant.");
+                empty_card.add_line("No browser profiles found in current cloud workspace.");
                 empty_card.print();
                 println!();
                 return Ok(());
@@ -346,9 +346,9 @@ pub async fn handle_profile_cloud(
 
             // Pack profile into .tar.zst delta
             let report = profile.pack(&base_dir, None)?;
-            let tenant_id = creds.tenant_id.as_deref().unwrap_or("default");
+            let workspace_id = creds.workspace_id.as_deref().unwrap_or("default");
             let cloud_target_id = profile.cloud_id.as_deref().unwrap_or(&id);
-            let canonical_rel_storage = format!("{}/{}.tar.zst", tenant_id, cloud_target_id);
+            let canonical_rel_storage = format!("{}/{}.tar.zst", workspace_id, cloud_target_id);
 
             let rpc_url = format!(
                 "{}/rest/v1/rpc/release_browser",
@@ -510,7 +510,7 @@ pub async fn handle_profile_push(
     {
         Some(c) => c,
         None => {
-            let err = "Workstation not enrolled with Cloud fleet. Run 'opn auth login' first.";
+            let err = "Desktop not enrolled with Cloud fleet. Run 'opn auth login' first.";
             if json {
                 println!("{}", serde_json::json!({ "success": false, "error": err }));
             } else {
@@ -525,12 +525,12 @@ pub async fn handle_profile_push(
         crate::infrastructure::cloud::resolve_supabase_url(None, creds.cloud_url.as_deref())?;
     let anon_key =
         crate::infrastructure::cloud::resolve_supabase_anon_key(creds.api_key.as_deref())?;
-    let tenant_id = creds.tenant_id.as_deref().unwrap_or("default");
+    let workspace_id = creds.workspace_id.as_deref().unwrap_or("default");
 
     let client = crate::infrastructure::cloud_reporter::CloudReporter::build_http_client();
 
-    // Storage object path: {tenant_id}/{profile_uuid}.tar.zst (pure UUID storage key)
-    let storage_rel_path = format!("{}/{}.tar.zst", tenant_id, profile_uuid);
+    // Storage object path: {workspace_id}/{profile_uuid}.tar.zst (pure UUID storage key)
+    let storage_rel_path = format!("{}/{}.tar.zst", workspace_id, profile_uuid);
 
     // 4. Stream upload archive directly to Supabase Storage: bucket 'browser-profiles'
     let file_bytes = std::fs::read(&report.archive_path)?;
@@ -635,7 +635,7 @@ pub async fn handle_profile_push(
                 "profile_id": profile.id,
                 "cloud_uuid": profile_uuid,
                 "name": profile.name,
-                "tenant_id": tenant_id,
+                "workspace_id": workspace_id,
                 "storage_path": storage_rel_path,
                 "storage_hash": report.sha256_hash,
                 "compressed_bytes": report.compressed_bytes,
@@ -652,7 +652,7 @@ pub async fn handle_profile_push(
     card.add_kv("Local Profile ID (Alias)", &profile.id);
     card.add_kv("Cloud Profile UUID", &profile_uuid);
     card.add_kv("Profile Name", &profile.name);
-    card.add_kv("Tenant Workspace", tenant_id);
+    card.add_kv("Workspace Workspace", workspace_id);
     card.add_kv(
         "Storage Path",
         format!("browser-profiles/{}", storage_rel_path),
@@ -687,7 +687,7 @@ pub async fn handle_profile_pull(
     {
         Some(c) => c,
         None => {
-            let err = "Workstation not enrolled with Cloud fleet. Run 'opn auth login' first.";
+            let err = "Desktop not enrolled with Cloud fleet. Run 'opn auth login' first.";
             if json {
                 println!("{}", serde_json::json!({ "success": false, "error": err }));
             } else {
@@ -701,7 +701,7 @@ pub async fn handle_profile_pull(
         crate::infrastructure::cloud::resolve_supabase_url(None, creds.cloud_url.as_deref())?;
     let anon_key =
         crate::infrastructure::cloud::resolve_supabase_anon_key(creds.api_key.as_deref())?;
-    let tenant_id = creds.tenant_id.as_deref().unwrap_or("default");
+    let workspace_id = creds.workspace_id.as_deref().unwrap_or("default");
 
     let client = crate::infrastructure::cloud_reporter::CloudReporter::build_http_client();
 
@@ -769,7 +769,7 @@ pub async fn handle_profile_pull(
     let storage_path = profile_data["storage_path"]
         .as_str()
         .map(|s| s.to_string())
-        .unwrap_or_else(|| format!("{}/{}.tar.zst", tenant_id, cloud_profile_id));
+        .unwrap_or_else(|| format!("{}/{}.tar.zst", workspace_id, cloud_profile_id));
     let expected_hash = profile_data["storage_hash"].as_str();
 
     // 2. Stream download archive from Supabase Storage: bucket 'browser-profiles'

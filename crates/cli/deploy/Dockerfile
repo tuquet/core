@@ -69,4 +69,4 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://127.0.0.1:8765/api/v1/health || exit 1
 
 ENTRYPOINT ["opn"]
-CMD ["worker", "start", "-H", "0.0.0.0", "-p", "8765"]
+CMD ["daemon", "start", "-H", "0.0.0.0", "-p", "8765"]

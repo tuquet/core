@@ -58,7 +58,7 @@ try {
     # Stop active daemon and wait until binary handles close before swapping
     foreach ($Candidate in @($TargetExe, $AliasExe)) {
         if (Test-Path $Candidate) {
-            try { & $Candidate worker stop --force 2>$null | Out-Null } catch {}
+            try { & $Candidate daemon stop --force 2>$null | Out-Null } catch {}
         }
     }
     for ($i = 0; $i -lt 20; $i++) {
@@ -96,7 +96,7 @@ if (Test-Path $LegacyVbs) {
 }
 
 if (-not $NoDaemon) {
-    $DaemonArgs = "worker start -H 127.0.0.1 -p 8765 -d"
+    $DaemonArgs = "daemon start -H 127.0.0.1 -p 8765 -d"
     try {
         $Action = New-ScheduledTaskAction -Execute $TargetExe -Argument $DaemonArgs
         $Trigger = New-ScheduledTaskTrigger -AtLogOn
@@ -111,7 +111,7 @@ if (-not $NoDaemon) {
     }
 
     Write-Host "[operon] Starting daemon on 127.0.0.1:8765..." -ForegroundColor Cyan
-    & $TargetExe worker start -H 127.0.0.1 -p 8765 -d
+    & $TargetExe daemon start -H 127.0.0.1 -p 8765 -d
 
     $Healthy = $false
     for ($i = 0; $i -lt 20; $i++) {
@@ -128,7 +128,7 @@ if (-not $NoDaemon) {
     if ($Healthy) {
         Write-Host "[operon] Daemon online at http://127.0.0.1:8765" -ForegroundColor Green
     } else {
-        Write-Host "[operon] Warning: binary installed, but daemon health check on 127.0.0.1:8765 did not respond yet. Run 'opn worker status' to inspect." -ForegroundColor Yellow
+        Write-Host "[operon] Warning: binary installed, but daemon health check on 127.0.0.1:8765 did not respond yet. Run 'opn daemon status' to inspect." -ForegroundColor Yellow
     }
 }
 

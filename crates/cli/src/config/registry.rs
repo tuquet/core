@@ -53,10 +53,10 @@ impl ConfigRegistry {
 
     pub fn canonical_service(service: &str) -> Option<&'static str> {
         match service.to_ascii_lowercase().as_str() {
-            "browser" | "chromium" | "chrome" => Some(crate::constants::PILLAR_BROWSER),
-            "automation" | "workflow" => Some(crate::constants::PILLAR_AUTOMATION),
-            "runner" | "worker" | "daemon" => Some(crate::constants::PILLAR_WORKER),
-            "cloud" | "system" => Some(crate::constants::PILLAR_SYSTEM),
+            "browser" => Some(crate::constants::PILLAR_BROWSER),
+            "automation" => Some(crate::constants::PILLAR_AUTOMATION),
+            "daemon" => Some(crate::constants::PILLAR_WORKER),
+            "system" => Some(crate::constants::PILLAR_SYSTEM),
             _ => None,
         }
     }
@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn test_schemars_dynamic_schema_generation() {
-        let pillars = ["browser", "automation", "worker", "system"];
+        let pillars = ["browser", "automation", "daemon", "system"];
         for p in pillars {
             let schema = ConfigRegistry::get_schema_json(p);
             assert!(schema.is_some(), "Schema must be generated for {}", p);
@@ -256,7 +256,7 @@ mod tests {
         let pillars: Vec<&str> = list.iter().map(|e| e.pillar).collect();
         assert!(pillars.contains(&"browser"));
         assert!(pillars.contains(&"automation"));
-        assert!(pillars.contains(&"worker"));
+        assert!(pillars.contains(&"daemon"));
         assert!(pillars.contains(&"system"));
 
         for entry in list {
@@ -272,11 +272,10 @@ mod tests {
     }
 
     #[test]
-    fn test_resolve_service_path_aliases() {
+    fn test_resolve_canonical_service_paths() {
         assert!(ConfigRegistry::resolve_service_path("browser").is_some());
         assert!(ConfigRegistry::resolve_service_path("automation").is_some());
-        assert!(ConfigRegistry::resolve_service_path("worker").is_some());
-        assert!(ConfigRegistry::resolve_service_path("cloud").is_some());
+        assert!(ConfigRegistry::resolve_service_path("daemon").is_some());
         assert!(ConfigRegistry::resolve_service_path("system").is_some());
         assert!(ConfigRegistry::resolve_service_path("non_existent").is_none());
     }
@@ -291,7 +290,7 @@ mod tests {
 
     #[test]
     fn test_get_default_json_all_services() {
-        for service in ["browser", "automation", "worker", "system"] {
+        for service in ["browser", "automation", "daemon", "system"] {
             let def = ConfigRegistry::get_default_json(service);
             assert!(
                 def.is_object(),

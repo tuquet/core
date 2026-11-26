@@ -12,7 +12,7 @@ pub enum JobCoordinatorError {
     #[error("Workflow resolution error: {0}")]
     WorkflowError(#[from] WorkflowResolveError),
 
-    #[error("Browser worker unavailable: {0}")]
+    #[error("Browser daemon unavailable: {0}")]
     BrowserUnavailable(String),
 
     #[error("Job not found: {0}")]
@@ -33,11 +33,11 @@ pub struct JobExecutionOptions {
     pub close_browser_on_finish: Option<bool>,
 }
 
-/// Coordinator orchestrating workflow job lifecycle, worker communication, and DB state
+/// Coordinator orchestrating workflow job lifecycle, daemon communication, and DB state
 pub struct JobCoordinator;
 
 impl JobCoordinator {
-    /// Resolves workflow source, initializes cancellation token, launches browser worker, and dispatches job
+    /// Resolves workflow source, initializes cancellation token, launches browser daemon, and dispatches job
     pub async fn submit(
         state: &AppState,
         workflow_id: Option<&str>,
@@ -114,13 +114,13 @@ impl JobCoordinator {
             // Clean up registered token if browser failed to connect
             state.active_jobs.write().await.remove(job_id.as_str());
             return Err(JobCoordinatorError::BrowserUnavailable(
-                "Browser worker failed to connect after 30 seconds. This might happen if a browser process is already locking the browser.".to_string(),
+                "Browser daemon failed to connect after 30 seconds. This might happen if a browser process is already locking the browser.".to_string(),
             ));
         }
 
         if let Err(e) = state.worker_tx.send(payload_str) {
             tracing::warn!(
-                "Broadcasted job to worker channel with no active listeners: {}",
+                "Broadcasted job to daemon channel with no active listeners: {}",
                 e
             );
         }
@@ -178,7 +178,7 @@ impl JobCoordinator {
         Ok(job_id)
     }
 
-    /// Aborts a running job by triggering its cancellation token and dispatching stop signal to worker
+    /// Aborts a running job by triggering its cancellation token and dispatching stop signal to daemon
     pub async fn kill(state: &AppState, job_id: &JobId) -> Result<(), JobCoordinatorError> {
         let token_opt = {
             let active = state.active_jobs.read().await;
@@ -314,7 +314,7 @@ impl JobCoordinator {
             job_id
         );
 
-        let graph = match worker::drivers::cdp::WorkflowGraph::from_json(&workflow_data) {
+        let graph = match daemon::drivers::cdp::WorkflowGraph::from_json(&workflow_data) {
             Ok(g) => g,
             Err(e) => {
                 tracing::error!("Failed to parse workflow graph for job {}: {}", job_id, e);
@@ -342,7 +342,7 @@ impl JobCoordinator {
         };
 
         let cdp_session =
-            match worker::drivers::cdp::CdpSession::connect(session.debugging_port).await {
+            match daemon::drivers::cdp::CdpSession::connect(session.debugging_port).await {
                 Ok(c) => c,
                 Err(e) => {
                     tracing::error!(
@@ -373,7 +373,7 @@ impl JobCoordinator {
                 }
             };
 
-        let mut initial_state = worker::drivers::cdp::ExecutionState::new();
+        let mut initial_state = daemon::drivers::cdp::ExecutionState::new();
         if let Some(serde_json::Value::Object(map)) = variables {
             for (k, v) in map {
                 initial_state.set_variable(&k, v);
@@ -394,9 +394,9 @@ impl JobCoordinator {
         // SPEC-automation-execution §11: every execution path — including this local one —
         // must register the values with the masker before running, otherwise a block that
         // echoes a secret leaks it into the job logs and the persisted result payload.
-        let masker = std::sync::Arc::new(worker::core::masker::SecretMasker::new());
+        let masker = std::sync::Arc::new(daemon::core::masker::SecretMasker::new());
         {
-            let store = worker::core::secrets::SecretStore::new();
+            let store = daemon::core::secrets::SecretStore::new();
             match store.load_all() {
                 Ok(map) => {
                     for (k, v) in &map {
@@ -409,7 +409,7 @@ impl JobCoordinator {
         }
 
         let executor =
-            worker::drivers::cdp::WorkflowDagExecutor::new(graph, std::sync::Arc::new(cdp_session));
+            daemon::drivers::cdp::WorkflowDagExecutor::new(graph, std::sync::Arc::new(cdp_session));
         match executor.execute(Some(initial_state), cancel_token).await {
             Ok(final_state) => {
                 let duration_ms = start_time.elapsed().as_millis() as i64;

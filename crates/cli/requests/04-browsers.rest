@@ -2,8 +2,8 @@
 @baseUrl = http://127.0.0.1:8765
 @contentType = application/json
 
-### 4.1 List Browser Profiles (scoped by tenant)
-GET {{baseUrl}}/api/v1/browsers?tenantId=local-default
+### 4.1 List Browser Profiles (scoped by workspace)
+GET {{baseUrl}}/api/v1/browsers?workspaceId=local-default
 
 ### 4.2 Create Browser Profile (Fingerprint & Proxy)
 # @name createProfile
@@ -11,7 +11,7 @@ POST {{baseUrl}}/api/v1/browsers
 Content-Type: {{contentType}}
 
 {
-  "tenantId": "local-default",
+  "workspaceId": "local-default",
   "name": "Dev Automation Profile",
   "groupName": "marketing",
   "tags": ["sea", "qa"],
@@ -53,18 +53,18 @@ POST {{baseUrl}}/api/v1/browsers/{{targetProfileId}}/clone
 Content-Type: {{contentType}}
 
 {
-  "targetTenantId": "local-default"
+  "targetWorkspaceId": "local-default"
 }
 
-### 4.7 Move Browser Profile to Another Tenant
+### 4.7 Move Browser Profile to Another Workspace
 POST {{baseUrl}}/api/v1/browsers/{{targetProfileId}}/move
 Content-Type: {{contentType}}
 
 {
-  "targetTenantId": "local-staging"
+  "targetWorkspaceId": "local-staging"
 }
 
-### 4.8 Set Tenant Default Browser Profile
+### 4.8 Set Workspace Default Browser Profile
 POST {{baseUrl}}/api/v1/browsers/{{targetProfileId}}/set-default
 
 ### 4.9 Launch Browser Session

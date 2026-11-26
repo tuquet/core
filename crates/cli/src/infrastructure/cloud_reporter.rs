@@ -48,7 +48,7 @@ impl CloudReporter {
             CloudApiClient::enroll(client, cloud_url, None, enrollment_token, None, None).await?;
         Self::save_credentials(data_dir, &creds).await?;
         info!(
-            "[CloudReporter] Workstation enrolled successfully [Device ID: {}]",
+            "[CloudReporter] Desktop enrolled successfully [Device ID: {}]",
             creds.device_id
         );
         Ok(creds)

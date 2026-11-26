@@ -3,13 +3,13 @@ use crate::api::handlers::jobs::connected_browsers;
 use crate::core::browser::archive::{
     get_browsers_base_path, unzip_browser_folder, zip_browser_folder,
 };
-use crate::core::browser::importer::{CsvImportError, import_csv_into_db_with_tenant};
+use crate::core::browser::importer::{CsvImportError, import_csv_into_db_with_workspace};
 use crate::core::browser::manager::{BrowserManager, BrowserManagerOptions, browser_registry};
 use crate::core::error::AutomationError;
 use crate::core::models::id::BrowserId;
 use crate::core::models::settings::AppSettings;
 use crate::infrastructure::db::{
-    Browser, CreateBrowserRecord, DEFAULT_TENANT_ID, FingerprintConfig, PatchBrowserRecord,
+    Browser, CreateBrowserRecord, DEFAULT_WORKSPACE_ID, FingerprintConfig, PatchBrowserRecord,
 };
 use axum::body::Bytes;
 use axum::extract::{Json, Path, Query, State};
@@ -65,15 +65,17 @@ fn validate_proxy_uri(proxy: Option<&str>) -> Result<Option<String>, AutomationE
     Ok(Some(trimmed.to_string()))
 }
 
-fn resolve_tenant_id(raw: Option<&str>) -> Result<String, AutomationError> {
+fn resolve_workspace_id(raw: Option<&str>) -> Result<String, AutomationError> {
     match raw.map(str::trim).filter(|s| !s.is_empty()) {
         Some(tid) => {
             if !is_valid_id(tid) {
-                return Err(AutomationError::BadRequest("Invalid tenantId".to_string()));
+                return Err(AutomationError::BadRequest(
+                    "Invalid workspaceId".to_string(),
+                ));
             }
             Ok(tid.to_string())
         }
-        None => Ok(DEFAULT_TENANT_ID.to_string()),
+        None => Ok(DEFAULT_WORKSPACE_ID.to_string()),
     }
 }
 
@@ -255,16 +257,18 @@ fn build_browser_response(
     session: Option<&browser::BrowserSession>,
     disk_size_bytes: Option<u64>,
 ) -> BrowserResponse {
-    let default_for_tenant = settings.browser.get_default_profile_for(&p.tenant_id);
-    let is_default = default_for_tenant == Some(p.id.as_str())
-        || (default_for_tenant.is_none() && p.tenant_id == DEFAULT_TENANT_ID && p.id == "default");
+    let default_for_workspace = settings.browser.get_default_profile_for(&p.workspace_id);
+    let is_default = default_for_workspace == Some(p.id.as_str())
+        || (default_for_workspace.is_none()
+            && p.workspace_id == DEFAULT_WORKSPACE_ID
+            && p.id == "default");
     let extensions = p
         .extensions
         .unwrap_or_else(|| vec!["automation".to_string()]);
 
     BrowserResponse {
         id: p.id,
-        tenant_id: p.tenant_id,
+        workspace_id: p.workspace_id,
         name: p.name,
         group_name: p.group_name,
         tags: p.tags,
@@ -289,14 +293,14 @@ fn emit_browser_event(
     state: &AppState,
     action: &str,
     id: &str,
-    tenant_id: &str,
+    workspace_id: &str,
     extra: Option<serde_json::Value>,
 ) {
     let mut payload = json!({
         "type": "browser_changed",
         "action": action,
         "id": id,
-        "tenantId": tenant_id,
+        "workspaceId": workspace_id,
     });
     if let (Some(obj), Some(serde_json::Value::Object(ext))) = (payload.as_object_mut(), extra) {
         for (k, v) in ext {
@@ -310,7 +314,7 @@ fn emit_browser_event(
 #[serde(rename_all = "camelCase")]
 #[schema(example = json!({
     "id": "profile_1",
-    "tenantId": "local-default",
+    "workspaceId": "local-default",
     "name": "Personal Profile",
     "groupName": "default",
     "tags": ["vip"],
@@ -327,8 +331,8 @@ fn emit_browser_event(
 pub struct BrowserResponse {
     /// Unique browser profile identifier
     pub id: String,
-    /// Owning tenant identifier ('local-default', 'local-*', or Cloud tenant UUID)
-    pub tenant_id: String,
+    /// Owning workspace identifier ('local-default', 'local-*', or Cloud workspace UUID)
+    pub workspace_id: String,
     /// User-friendly profile label
     pub name: String,
     /// Logical group/folder name
@@ -347,7 +351,7 @@ pub struct BrowserResponse {
     pub fingerprint_config: FingerprintConfig,
     /// Extra startup Chromium CLI flags
     pub startup_flags: Vec<String>,
-    /// Whether this profile is currently configured as the tenant default
+    /// Whether this profile is currently configured as the workspace default
     pub is_default: bool,
     /// Creation timestamp (ISO 8601)
     pub created_at: String,
@@ -369,7 +373,7 @@ pub struct BrowserResponse {
 #[serde(rename_all = "camelCase")]
 #[schema(example = json!({
     "id": "profile_1",
-    "tenantId": "local-default",
+    "workspaceId": "local-default",
     "name": "Personal Profile",
     "groupName": "marketing",
     "tags": ["sea"],
@@ -382,9 +386,9 @@ pub struct BrowserResponse {
 pub struct CreateBrowserRequest {
     /// Optional custom ID (auto-generated if omitted)
     pub id: Option<String>,
-    /// Owning tenant ID (defaults to 'local-default')
+    /// Owning workspace ID (defaults to 'local-default')
     #[serde(default)]
-    pub tenant_id: Option<String>,
+    pub workspace_id: Option<String>,
     /// User-friendly profile name
     pub name: String,
     /// Optional group name
@@ -511,10 +515,9 @@ pub struct GetBrowsersQuery {
     pub offset: Option<usize>,
     /// Optional search query to filter browsers by name, ID, group, or proxy
     pub search: Option<String>,
-    /// Filter by owning tenant ID (pass scope=all to list across all tenants)
-    #[serde(alias = "tenant_id")]
-    pub tenant_id: Option<String>,
-    /// Optional scope ('tenant' | 'all')
+    /// Filter by owning workspace ID (pass scope=all to list across all workspaces)
+    pub workspace_id: Option<String>,
+    /// Optional scope ('workspace' | 'all')
     pub scope: Option<String>,
     /// Filter by runtime status ('online' | 'offline')
     pub status: Option<String>,
@@ -532,7 +535,7 @@ pub struct GetBrowsersQuery {
     path = "/api/v1/browsers",
     operation_id = "get_browsers",
     summary = "List browser profiles",
-    description = "Retrieves persisted browser profiles filtered by optional tenant, search, status, proxy, group, or OS platform.",
+    description = "Retrieves persisted browser profiles filtered by optional workspace, search, status, proxy, group, or OS platform.",
     params(GetBrowsersQuery),
     responses(
         (status = 200, description = "List of browser profiles", body = Vec<BrowserResponse>),
@@ -543,11 +546,11 @@ pub async fn get_browsers(
     State(state): State<AppState>,
     Query(query): Query<GetBrowsersQuery>,
 ) -> Result<Json<Vec<BrowserResponse>>, AutomationError> {
-    let tenant_filter = if query.scope.as_deref() == Some("all") {
+    let workspace_filter = if query.scope.as_deref() == Some("all") {
         None
     } else {
         query
-            .tenant_id
+            .workspace_id
             .as_deref()
             .map(str::trim)
             .filter(|s| !s.is_empty())
@@ -562,7 +565,7 @@ pub async fn get_browsers(
         let rows = db
             .browsers()
             .list_browsers(
-                tenant_filter,
+                workspace_filter,
                 if has_secondary_filter {
                     None
                 } else {
@@ -647,7 +650,7 @@ pub async fn get_browsers(
     path = "/api/v1/browsers",
     operation_id = "create_browser",
     summary = "Create a new browser profile",
-    description = "Persists a new isolated tenant-scoped browser profile with deterministic antidetect fingerprint settings in SQLite.",
+    description = "Persists a new isolated workspace-scoped browser profile with deterministic antidetect fingerprint settings in SQLite.",
     request_body = CreateBrowserRequest,
     responses(
         (status = 200, description = "Browser profile created successfully", body = CreateBrowserResponse),
@@ -671,7 +674,7 @@ pub async fn create_browser(
     }
 
     let name = validate_name(&req.name)?;
-    let tenant_id = resolve_tenant_id(req.tenant_id.as_deref())?;
+    let workspace_id = resolve_workspace_id(req.workspace_id.as_deref())?;
     let proxy = validate_proxy_uri(req.proxy.as_deref())?;
     let user_agent = req
         .user_agent
@@ -718,7 +721,7 @@ pub async fn create_browser(
         db.browsers()
             .create_browser_record(&CreateBrowserRecord {
                 id: &final_id,
-                tenant_id: &tenant_id,
+                workspace_id: &workspace_id,
                 name: &name,
                 group_name: Some(group_name),
                 tags: Some(&tags),
@@ -739,7 +742,7 @@ pub async fn create_browser(
         (record, settings)
     };
 
-    emit_browser_event(&state, "create", &final_id, &tenant_id, None);
+    emit_browser_event(&state, "create", &final_id, &workspace_id, None);
 
     Ok(Json(CreateBrowserResponse {
         success: true,
@@ -846,12 +849,12 @@ pub async fn update_browser(
         (record, settings)
     };
 
-    let tenant_id = updated
+    let workspace_id = updated
         .as_ref()
-        .map(|b| b.tenant_id.as_str())
-        .unwrap_or(DEFAULT_TENANT_ID)
+        .map(|b| b.workspace_id.as_str())
+        .unwrap_or(DEFAULT_WORKSPACE_ID)
         .to_string();
-    emit_browser_event(&state, "update", &id, &tenant_id, None);
+    emit_browser_event(&state, "update", &id, &workspace_id, None);
     let is_online = is_browser_running(&id).await;
 
     Ok(Json(UpdateBrowserResponse {
@@ -964,7 +967,7 @@ pub async fn patch_browser(
         (record, settings)
     };
 
-    emit_browser_event(&state, "update", &updated.id, &updated.tenant_id, None);
+    emit_browser_event(&state, "update", &updated.id, &updated.workspace_id, None);
     let is_online = is_browser_running(&id).await;
     let sess = crate::core::browser::manager::browser_sessions()
         .read()
@@ -1039,16 +1042,19 @@ async fn perform_delete_browser(
             .map_err(|e| AutomationError::DatabaseError(e.to_string()))?;
 
         if let Ok(mut settings) = db.settings().get_settings()
-            && settings.browser.get_default_profile_for(&profile.tenant_id) == Some(id)
+            && settings
+                .browser
+                .get_default_profile_for(&profile.workspace_id)
+                == Some(id)
         {
             settings
                 .browser
-                .set_default_profile_for(&profile.tenant_id, None);
+                .set_default_profile_for(&profile.workspace_id, None);
             let _ = db.settings().save_settings(&settings);
             let _ = state.tx.send(
                 json!({
                     "type": "settings_updated",
-                    "tenantId": profile.tenant_id,
+                    "workspaceId": profile.workspace_id,
                     "default_profile_id": serde_json::Value::Null
                 })
                 .to_string(),
@@ -1057,8 +1063,8 @@ async fn perform_delete_browser(
     }
 
     cleanup_profile_disk(id, &state.config.data_dir).await;
-    emit_browser_event(state, "delete", id, &profile.tenant_id, None);
-    Ok(profile.tenant_id)
+    emit_browser_event(state, "delete", id, &profile.workspace_id, None);
+    Ok(profile.workspace_id)
 }
 
 #[utoipa::path(
@@ -1161,7 +1167,7 @@ pub async fn get_browser_detail(
 pub struct CloneBrowserRequest {
     pub new_id: Option<String>,
     pub name: Option<String>,
-    pub target_tenant_id: Option<String>,
+    pub target_workspace_id: Option<String>,
     pub preserve_seed: Option<bool>,
     pub copy_storage: Option<bool>,
 }
@@ -1172,14 +1178,14 @@ pub struct CloneBrowserRequest {
     path = "/api/v1/browsers/{id}/clone",
     operation_id = "clone_browser",
     summary = "Duplicate or copy browser profile",
-    description = "Clones profile metadata (with a fresh fingerprint seed by default) into the same or another tenant.",
+    description = "Clones profile metadata (with a fresh fingerprint seed by default) into the same or another workspace.",
     params(
         ("id" = String, Path, description = "Source browser profile identifier")
     ),
     request_body = CloneBrowserRequest,
     responses(
         (status = 200, description = "Cloned browser profile", body = BrowserResponse),
-        (status = 400, description = "Invalid browser ID or target tenant", body = crate::core::error::ApiErrorResponse),
+        (status = 400, description = "Invalid browser ID or target workspace", body = crate::core::error::ApiErrorResponse),
         (status = 404, description = "Source browser profile not found", body = crate::core::error::ApiErrorResponse),
         (status = 409, description = "Target ID exists or source is running while copyStorage requested", body = crate::core::error::ApiErrorResponse)
     )
@@ -1210,9 +1216,9 @@ pub async fn clone_browser(
         )));
     }
 
-    let target_tenant = match req.target_tenant_id.as_deref() {
-        Some(t) => resolve_tenant_id(Some(t))?,
-        None => source.tenant_id.clone(),
+    let target_workspace = match req.target_workspace_id.as_deref() {
+        Some(t) => resolve_workspace_id(Some(t))?,
+        None => source.workspace_id.clone(),
     };
     let clone_id = match req
         .new_id
@@ -1269,7 +1275,7 @@ pub async fn clone_browser(
         db.browsers()
             .create_browser_record(&CreateBrowserRecord {
                 id: &clone_id,
-                tenant_id: &target_tenant,
+                workspace_id: &target_workspace,
                 name: &clone_name,
                 group_name: source.group_name.as_deref(),
                 tags: Some(&source.tags),
@@ -1291,7 +1297,7 @@ pub async fn clone_browser(
         (rec, settings)
     };
 
-    emit_browser_event(&state, "create", &clone_id, &target_tenant, None);
+    emit_browser_event(&state, "create", &clone_id, &target_workspace, None);
     Ok(Json(build_browser_response(
         cloned, &settings, false, None, None,
     )))
@@ -1300,23 +1306,23 @@ pub async fn clone_browser(
 #[derive(Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MoveBrowserRequest {
-    pub target_tenant_id: String,
+    pub target_workspace_id: String,
 }
 
 #[utoipa::path(
     tag = "Browsers",
     post,
     path = "/api/v1/browsers/{id}/move",
-    operation_id = "move_browser_tenant",
-    summary = "Move browser profile across tenants",
-    description = "Reassigns an offline browser profile to another tenant.",
+    operation_id = "move_browser_workspace",
+    summary = "Move browser profile across workspaces",
+    description = "Reassigns an offline browser profile to another workspace.",
     params(
         ("id" = String, Path, description = "Unique browser profile identifier")
     ),
     request_body = MoveBrowserRequest,
     responses(
-        (status = 200, description = "Browser moved to target tenant", body = BrowserResponse),
-        (status = 400, description = "Invalid browser ID or target tenantId", body = crate::core::error::ApiErrorResponse),
+        (status = 200, description = "Browser moved to target workspace", body = BrowserResponse),
+        (status = 400, description = "Invalid browser ID or target workspaceId", body = crate::core::error::ApiErrorResponse),
         (status = 404, description = "Browser profile not found", body = crate::core::error::ApiErrorResponse),
         (status = 409, description = "Cannot move a running browser profile", body = crate::core::error::ApiErrorResponse)
     )
@@ -1331,38 +1337,40 @@ pub async fn move_browser(
             "Invalid browser ID".to_string(),
         ));
     }
-    if req.target_tenant_id.trim().is_empty() {
+    if req.target_workspace_id.trim().is_empty() {
         return Err(AutomationError::BadRequest(
-            "targetTenantId is required".to_string(),
+            "targetWorkspaceId is required".to_string(),
         ));
     }
-    let target_tenant = resolve_tenant_id(Some(&req.target_tenant_id))?;
+    let target_workspace = resolve_workspace_id(Some(&req.target_workspace_id))?;
 
     if is_browser_running(&id).await {
         return Err(AutomationError::Conflict(format!(
-            "Stop browser '{}' before moving it to another tenant",
+            "Stop browser '{}' before moving it to another workspace",
             id
         )));
     }
 
-    let (moved, old_tenant, settings) = {
+    let (moved, old_workspace, settings) = {
         let db = state.db.lock().await;
         let existing = db
             .browsers()
             .get_browser(&id)
             .map_err(|e| AutomationError::DatabaseError(e.to_string()))?
             .ok_or_else(|| AutomationError::NotFound(format!("Browser '{}' not found", id)))?;
-        let old_tenant = existing.tenant_id.clone();
+        let old_workspace = existing.workspace_id.clone();
 
         db.browsers()
-            .move_browser_tenant(&id, &target_tenant)
+            .move_browser_workspace(&id, &target_workspace)
             .map_err(|e| AutomationError::DatabaseError(e.to_string()))?;
 
         let mut settings = db.settings().get_settings().unwrap_or_default();
-        if old_tenant != target_tenant
-            && settings.browser.get_default_profile_for(&old_tenant) == Some(id.as_str())
+        if old_workspace != target_workspace
+            && settings.browser.get_default_profile_for(&old_workspace) == Some(id.as_str())
         {
-            settings.browser.set_default_profile_for(&old_tenant, None);
+            settings
+                .browser
+                .set_default_profile_for(&old_workspace, None);
             let _ = db.settings().save_settings(&settings);
         }
 
@@ -1371,15 +1379,15 @@ pub async fn move_browser(
             .get_browser(&id)
             .map_err(|e| AutomationError::DatabaseError(e.to_string()))?
             .ok_or_else(|| AutomationError::NotFound(format!("Browser '{}' not found", id)))?;
-        (updated, old_tenant, settings)
+        (updated, old_workspace, settings)
     };
 
     emit_browser_event(
         &state,
         "move",
         &id,
-        &target_tenant,
-        Some(json!({ "sourceTenantId": old_tenant })),
+        &target_workspace,
+        Some(json!({ "sourceWorkspaceId": old_workspace })),
     );
     Ok(Json(build_browser_response(
         moved, &settings, false, None, None,
@@ -1473,7 +1481,7 @@ pub async fn unbind_browser(
         &state,
         "unbind",
         &id,
-        &profile.tenant_id,
+        &profile.workspace_id,
         Some(json!({ "cloudReleased": cloud_released })),
     );
 
@@ -1494,7 +1502,7 @@ pub async fn unbind_browser(
 pub struct SetDefaultBrowserResponse {
     pub success: bool,
     pub message: String,
-    pub tenant_id: String,
+    pub workspace_id: String,
     pub default_profile_id: String,
 }
 
@@ -1503,8 +1511,8 @@ pub struct SetDefaultBrowserResponse {
     post,
     path = "/api/v1/browsers/{id}/set-default",
     operation_id = "set_default_browser",
-    summary = "Set default browser profile for its tenant",
-    description = "Updates per-tenant default browser profile in daemon settings.",
+    summary = "Set default browser profile for its workspace",
+    description = "Updates per-workspace default browser profile in daemon settings.",
     params(
         ("id" = String, Path, description = "Unique browser profile identifier")
     ),
@@ -1530,9 +1538,9 @@ pub async fn set_default_browser(
         .get_browser(&id)
         .map_err(|e| AutomationError::DatabaseError(e.to_string()))?;
 
-    let tenant_id = match existing {
-        Some(b) => b.tenant_id,
-        None if id == "default" => DEFAULT_TENANT_ID.to_string(),
+    let workspace_id = match existing {
+        Some(b) => b.workspace_id,
+        None if id == "default" => DEFAULT_WORKSPACE_ID.to_string(),
         None => {
             return Err(AutomationError::NotFound(format!(
                 "Browser profile '{}' not found",
@@ -1544,7 +1552,7 @@ pub async fn set_default_browser(
     let mut settings = db.settings().get_settings().unwrap_or_default();
     settings
         .browser
-        .set_default_profile_for(&tenant_id, Some(id.clone()));
+        .set_default_profile_for(&workspace_id, Some(id.clone()));
     db.settings()
         .save_settings(&settings)
         .map_err(|e| AutomationError::DatabaseError(e.to_string()))?;
@@ -1552,7 +1560,7 @@ pub async fn set_default_browser(
     let _ = state.tx.send(
         json!({
             "type": "settings_updated",
-            "tenantId": tenant_id,
+            "workspaceId": workspace_id,
             "default_profile_id": id
         })
         .to_string(),
@@ -1561,7 +1569,7 @@ pub async fn set_default_browser(
     Ok(Json(SetDefaultBrowserResponse {
         success: true,
         message: format!("Profile '{}' set as default browser", id),
-        tenant_id,
+        workspace_id,
         default_profile_id: id,
     }))
 }
@@ -1757,7 +1765,7 @@ pub async fn update_browser_extensions(
         (record, settings)
     };
 
-    emit_browser_event(&state, "update", &updated.id, &updated.tenant_id, None);
+    emit_browser_event(&state, "update", &updated.id, &updated.workspace_id, None);
     let is_online = is_browser_running(&id).await;
     Ok(Json(build_browser_response(
         updated, &settings, is_online, None, None,
@@ -1938,10 +1946,10 @@ pub async fn start_browser(
         (prof, settings)
     };
 
-    let (tenant_id, db_user_agent, db_timezone, db_proxy, db_extensions, db_fp, db_flags) =
+    let (workspace_id, db_user_agent, db_timezone, db_proxy, db_extensions, db_fp, db_flags) =
         match profile_opt {
             Some(p) => (
-                p.tenant_id,
+                p.workspace_id,
                 p.user_agent,
                 p.timezone,
                 p.proxy,
@@ -1950,7 +1958,7 @@ pub async fn start_browser(
                 p.startup_flags,
             ),
             None => (
-                DEFAULT_TENANT_ID.to_string(),
+                DEFAULT_WORKSPACE_ID.to_string(),
                 None,
                 None,
                 None,
@@ -2063,7 +2071,7 @@ pub async fn start_browser(
         json!({
             "type": "browser_online",
             "id": browser_id,
-            "tenantId": tenant_id,
+            "workspaceId": workspace_id,
         })
         .to_string(),
     );
@@ -2159,12 +2167,12 @@ pub async fn stop_browser(
 
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[schema(example = json!({"csvString": "id,name,userAgent,timezone,proxy\nprofile1,Main Profile,,UTC,socks5://127.0.0.1:1080", "tenantId": "local-default"}))]
+#[schema(example = json!({"csvString": "id,name,userAgent,timezone,proxy\nprofile1,Main Profile,,UTC,socks5://127.0.0.1:1080", "workspaceId": "local-default"}))]
 pub struct ImportCsvPayload {
     #[serde(alias = "csv_string")]
     pub csv_string: String,
-    #[serde(default, alias = "tenant_id")]
-    pub tenant_id: Option<String>,
+    #[serde(default)]
+    pub workspace_id: Option<String>,
 }
 
 #[derive(serde::Serialize, utoipa::ToSchema)]
@@ -2183,7 +2191,7 @@ pub struct ImportCsvResponse {
     path = "/api/v1/browsers/import-csv",
     operation_id = "import_browsers_csv",
     summary = "Batch import browser profiles from CSV",
-    description = "Parses RFC-4180 CSV rows, validates entries, and inserts valid browser profiles scoped to tenant.",
+    description = "Parses RFC-4180 CSV rows, validates entries, and inserts valid browser profiles scoped to workspace.",
     request_body = ImportCsvPayload,
     responses(
         (status = 200, description = "CSV profiles parsed and imported", body = ImportCsvResponse)
@@ -2195,14 +2203,14 @@ pub async fn import_csv(
 ) -> axum::response::Json<ImportCsvResponse> {
     let report = {
         let db = state.db.lock().await;
-        import_csv_into_db_with_tenant(&db, &payload.csv_string, payload.tenant_id.as_deref())
+        import_csv_into_db_with_workspace(&db, &payload.csv_string, payload.workspace_id.as_deref())
     };
     let tid = payload
-        .tenant_id
+        .workspace_id
         .as_deref()
         .map(str::trim)
         .filter(|s| !s.is_empty())
-        .unwrap_or(DEFAULT_TENANT_ID);
+        .unwrap_or(DEFAULT_WORKSPACE_ID);
 
     if report.imported > 0 {
         emit_browser_event(&state, "batch_create", "*", tid, None);
@@ -2298,7 +2306,7 @@ pub async fn sideload_extension(
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_else(|_| payload.extension_path.clone());
 
-    let tenant_id = {
+    let workspace_id = {
         let db = state.db.lock().await;
         let browser = db
             .browsers()
@@ -2324,10 +2332,10 @@ pub async fn sideload_extension(
                 },
             )
             .map_err(|e| AutomationError::DatabaseError(e.to_string()))?;
-        browser.tenant_id
+        browser.workspace_id
     };
 
-    emit_browser_event(&state, "update", &id, &tenant_id, None);
+    emit_browser_event(&state, "update", &id, &workspace_id, None);
 
     Ok(Json(SideloadExtensionResponse {
         status: "success".to_string(),
@@ -2380,16 +2388,16 @@ pub async fn auto_detect_browsers(
 
     let settings = if let Ok(mut s) = db.settings().get_settings() {
         if s.browser
-            .get_default_profile_for(DEFAULT_TENANT_ID)
+            .get_default_profile_for(DEFAULT_WORKSPACE_ID)
             .is_none()
         {
             let all = db
                 .browsers()
-                .list_browsers(Some(DEFAULT_TENANT_ID), None, None, None)
+                .list_browsers(Some(DEFAULT_WORKSPACE_ID), None, None, None)
                 .unwrap_or_default();
             if let Some(first) = all.first() {
                 s.browser
-                    .set_default_profile_for(DEFAULT_TENANT_ID, Some(first.id.clone()));
+                    .set_default_profile_for(DEFAULT_WORKSPACE_ID, Some(first.id.clone()));
                 let _ = db.settings().save_settings(&s);
             }
         }
@@ -2452,7 +2460,7 @@ mod tests {
         let state = create_test_state();
         let create_req = CreateBrowserRequest {
             id: Some("test_browser_profile_1".to_string()),
-            tenant_id: Some("tenant-a".to_string()),
+            workspace_id: Some("workspace-a".to_string()),
             name: "Test Browser 1".to_string(),
             user_agent: Some("TestAgent/1.0".to_string()),
             timezone: Some("UTC".to_string()),
@@ -2480,18 +2488,18 @@ mod tests {
         .unwrap_err();
         assert!(matches!(dup_err, AutomationError::Conflict(_)));
 
-        // Tenant-scoped query
+        // Workspace-scoped query
         let list_a = get_browsers(
             State(state.clone()),
             Query(GetBrowsersQuery {
-                tenant_id: Some("tenant-a".to_string()),
+                workspace_id: Some("workspace-a".to_string()),
                 ..Default::default()
             }),
         )
         .await
         .unwrap();
         assert_eq!(list_a.len(), 1);
-        assert_eq!(list_a[0].tenant_id, "tenant-a");
+        assert_eq!(list_a[0].workspace_id, "workspace-a");
         assert_eq!(list_a[0].proxy.as_deref(), Some("socks5://127.0.0.1:1080"));
 
         // PATCH partial update preserves proxy while clearing timezone via explicit null
@@ -2508,32 +2516,32 @@ mod tests {
         assert_eq!(patched.0.timezone, None);
         assert_eq!(patched.0.proxy.as_deref(), Some("socks5://127.0.0.1:1080"));
 
-        // Clone across tenant with fresh seed
+        // Clone across workspace with fresh seed
         let cloned = clone_browser(
             State(state.clone()),
             Path("test_browser_profile_1".to_string()),
             Json(CloneBrowserRequest {
                 new_id: Some("cloned_1".to_string()),
-                target_tenant_id: Some("tenant-b".to_string()),
+                target_workspace_id: Some("workspace-b".to_string()),
                 ..Default::default()
             }),
         )
         .await
         .unwrap();
-        assert_eq!(cloned.0.tenant_id, "tenant-b");
+        assert_eq!(cloned.0.workspace_id, "workspace-b");
         assert_eq!(cloned.0.name, "Patched Browser (Copy)");
 
-        // Move across tenant
+        // Move across workspace
         let moved = move_browser(
             State(state.clone()),
             Path("test_browser_profile_1".to_string()),
             Json(MoveBrowserRequest {
-                target_tenant_id: "tenant-b".to_string(),
+                target_workspace_id: "workspace-b".to_string(),
             }),
         )
         .await
         .unwrap();
-        assert_eq!(moved.0.tenant_id, "tenant-b");
+        assert_eq!(moved.0.workspace_id, "workspace-b");
 
         // Update extensions (automation kept by default)
         let updated_exts = update_browser_extensions(
@@ -2621,27 +2629,27 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_set_default_browser_per_tenant() {
+    async fn test_set_default_browser_per_workspace() {
         let state = create_test_state();
         let _ = create_browser(
             State(state.clone()),
             Json(CreateBrowserRequest {
-                id: Some("p_tenant_1".to_string()),
-                tenant_id: Some("tenant-1".to_string()),
-                name: "Tenant 1 Profile".to_string(),
+                id: Some("p_workspace_1".to_string()),
+                workspace_id: Some("workspace-1".to_string()),
+                name: "Workspace 1 Profile".to_string(),
                 ..Default::default()
             }),
         )
         .await
         .unwrap();
 
-        let set_res = set_default_browser(State(state.clone()), Path("p_tenant_1".to_string()))
+        let set_res = set_default_browser(State(state.clone()), Path("p_workspace_1".to_string()))
             .await
             .unwrap();
         assert!(set_res.0.success);
-        assert_eq!(set_res.0.tenant_id, "tenant-1");
+        assert_eq!(set_res.0.workspace_id, "workspace-1");
 
-        let detail = get_browser_detail(State(state.clone()), Path("p_tenant_1".to_string()))
+        let detail = get_browser_detail(State(state.clone()), Path("p_workspace_1".to_string()))
             .await
             .unwrap();
         assert!(detail.is_default);

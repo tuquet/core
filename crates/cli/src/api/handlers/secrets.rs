@@ -6,9 +6,9 @@
 //! - `/secrets`                       → schema-level status
 //! - `/secrets/credentials`           → table `secrets.credentials`
 //! - `/secrets/credentials/{name}`    → one credential row
-//! - `/secrets/tenant-keys/rotate`    → table `secrets.tenant_keys` (rotate the tenant DEK)
+//! - `/secrets/workspace-keys/rotate`    → table `secrets.workspace_keys` (rotate the workspace DEK)
 //!
-//! Consumed by the workstation console (`opn desktop`). Values are never returned in
+//! Consumed by the desktop console (`opn desktop`). Values are never returned in
 //! plaintext by this API — only names/metadata (zero-knowledge; see SPEC-secret-store).
 
 use axum::{
@@ -21,7 +21,7 @@ use utoipa::ToSchema;
 use crate::AppState;
 use crate::core::error::AutomationError;
 use crate::infrastructure::cloud::SecretClient;
-use worker::core::secrets::{DeviceKeypair, SecretStore};
+use daemon::core::secrets::{DeviceKeypair, SecretStore};
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct SecretRow {
@@ -119,7 +119,7 @@ pub async fn get_secrets(
     path = "/api/v1/secrets/credentials",
     operation_id = "list_credentials",
     summary = "List credentials",
-    description = "Lists credential names of the tenant (local + cloud). Values are never returned (schema `secrets.credentials`).",
+    description = "Lists credential names of the workspace (local + cloud). Values are never returned (schema `secrets.credentials`).",
     responses(
         (status = 200, description = "Credential names", body = CredentialList),
         (status = 400, description = "Invalid request", body = crate::core::error::ApiErrorResponse),
@@ -277,7 +277,7 @@ pub async fn push_secrets(
     path = "/api/v1/secrets/credentials/pull",
     operation_id = "pull_credentials",
     summary = "Pull credentials from Cloud",
-    description = "Receives the tenant DEK (sealed) and decrypts the tenant credentials locally. Table `secrets.credentials`.",
+    description = "Receives the workspace DEK (sealed) and decrypts the workspace credentials locally. Table `secrets.credentials`.",
     responses(
         (status = 200, description = "Pulled", body = SecretOpResult),
         (status = 400, description = "Invalid request", body = crate::core::error::ApiErrorResponse),
@@ -301,14 +301,14 @@ pub async fn pull_secrets(
     }))
 }
 
-/// POST /api/v1/secrets/tenant-keys/rotate — rotate the tenant DEK (`secrets.tenant_keys`).
+/// POST /api/v1/secrets/workspace-keys/rotate — rotate the workspace DEK (`secrets.workspace_keys`).
 #[utoipa::path(
     tag = "Secrets",
     post,
-    path = "/api/v1/secrets/tenant-keys/rotate",
-    operation_id = "rotate_tenant_dek",
-    summary = "Rotate the tenant DEK",
-    description = "Rotates the tenant DEK, re-encrypts every credential and re-seals the DEK for all registered devices. Table `secrets.tenant_keys`.",
+    path = "/api/v1/secrets/workspace-keys/rotate",
+    operation_id = "rotate_workspace_dek",
+    summary = "Rotate the workspace DEK",
+    description = "Rotates the workspace DEK, re-encrypts every credential and re-seals the DEK for all registered devices. Table `secrets.workspace_keys`.",
     responses(
         (status = 200, description = "Rotated", body = SecretOpResult),
         (status = 400, description = "Invalid request", body = crate::core::error::ApiErrorResponse),
@@ -326,6 +326,6 @@ pub async fn rotate_secrets(
     Ok(Json(SecretOpResult {
         ok: true,
         affected: n,
-        message: format!("Rotated tenant DEK — re-encrypted {} credential(s).", n),
+        message: format!("Rotated workspace DEK — re-encrypted {} credential(s).", n),
     }))
 }

@@ -2,7 +2,7 @@ use rusqlite::{Connection, Result, params};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-pub const DEFAULT_TENANT_ID: &str = "local-default";
+pub const DEFAULT_WORKSPACE_ID: &str = "local-default";
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, Clone, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
@@ -36,7 +36,7 @@ pub struct FingerprintConfig {
 #[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
 pub struct Browser {
     pub id: String,
-    pub tenant_id: String,
+    pub workspace_id: String,
     pub name: String,
     pub group_name: Option<String>,
     pub tags: Vec<String>,
@@ -53,7 +53,7 @@ pub struct Browser {
 #[derive(Debug, Clone)]
 pub struct CreateBrowserRecord<'a> {
     pub id: &'a str,
-    pub tenant_id: &'a str,
+    pub workspace_id: &'a str,
     pub name: &'a str,
     pub group_name: Option<&'a str>,
     pub tags: Option<&'a [String]>,
@@ -109,9 +109,9 @@ fn map_browser_row(row: &rusqlite::Row<'_>) -> Result<Browser> {
 
     Ok(Browser {
         id: row.get(0)?,
-        tenant_id: row
+        workspace_id: row
             .get::<_, Option<String>>(1)?
-            .unwrap_or_else(|| DEFAULT_TENANT_ID.to_string()),
+            .unwrap_or_else(|| DEFAULT_WORKSPACE_ID.to_string()),
         name: row.get(2)?,
         group_name: row.get(3)?,
         tags: parse_string_vec(tags_raw),
@@ -126,7 +126,7 @@ fn map_browser_row(row: &rusqlite::Row<'_>) -> Result<Browser> {
     })
 }
 
-const BROWSER_SELECT_COLS: &str = "id, tenant_id, name, group_name, tags, user_agent, timezone, proxy, extensions, fingerprint_config, startup_flags, created_at, updated_at";
+const BROWSER_SELECT_COLS: &str = "id, workspace_id, name, group_name, tags, user_agent, timezone, proxy, extensions, fingerprint_config, startup_flags, created_at, updated_at";
 
 pub struct SqliteBrowserRepository<'a> {
     pub conn: &'a Connection,
@@ -138,10 +138,10 @@ impl<'a> SqliteBrowserRepository<'a> {
     }
 
     pub fn create_browser_record(&self, input: &CreateBrowserRecord<'_>) -> Result<()> {
-        let tenant_id = if input.tenant_id.trim().is_empty() {
-            DEFAULT_TENANT_ID
+        let workspace_id = if input.workspace_id.trim().is_empty() {
+            DEFAULT_WORKSPACE_ID
         } else {
-            input.tenant_id.trim()
+            input.workspace_id.trim()
         };
         let group_name = input.group_name.unwrap_or("default");
         let tags_json = input
@@ -162,10 +162,10 @@ impl<'a> SqliteBrowserRepository<'a> {
             .unwrap_or_else(|| "[]".to_string());
 
         self.conn.execute(
-            "INSERT INTO browsers (id, tenant_id, name, group_name, tags, user_agent, timezone, proxy, extensions, fingerprint_config, startup_flags) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            "INSERT INTO browsers (id, workspace_id, name, group_name, tags, user_agent, timezone, proxy, extensions, fingerprint_config, startup_flags) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
             params![
                 input.id,
-                tenant_id,
+                workspace_id,
                 input.name,
                 group_name,
                 tags_json,
@@ -191,7 +191,7 @@ impl<'a> SqliteBrowserRepository<'a> {
     ) -> Result<()> {
         self.create_browser_record(&CreateBrowserRecord {
             id,
-            tenant_id: DEFAULT_TENANT_ID,
+            workspace_id: DEFAULT_WORKSPACE_ID,
             name,
             group_name: None,
             tags: None,
@@ -206,7 +206,7 @@ impl<'a> SqliteBrowserRepository<'a> {
 
     pub fn list_browsers(
         &self,
-        tenant_id: Option<&str>,
+        workspace_id: Option<&str>,
         limit: Option<usize>,
         offset: Option<usize>,
         search: Option<&str>,
@@ -217,13 +217,13 @@ impl<'a> SqliteBrowserRepository<'a> {
             .map(str::trim)
             .filter(|s| !s.is_empty())
             .map(|s| format!("%{}%", s));
-        let tenant_clean = tenant_id.map(str::trim).filter(|s| !s.is_empty());
+        let workspace_clean = workspace_id.map(str::trim).filter(|s| !s.is_empty());
 
         let mut browsers = Vec::new();
-        match (tenant_clean, search_pattern) {
+        match (workspace_clean, search_pattern) {
             (Some(tid), Some(pattern)) => {
                 let sql = format!(
-                    "SELECT {BROWSER_SELECT_COLS} FROM browsers WHERE tenant_id = ?1 AND (name LIKE ?2 OR id LIKE ?2 OR COALESCE(group_name, '') LIKE ?2 OR COALESCE(proxy, '') LIKE ?2) ORDER BY name ASC LIMIT ?3 OFFSET ?4"
+                    "SELECT {BROWSER_SELECT_COLS} FROM browsers WHERE workspace_id = ?1 AND (name LIKE ?2 OR id LIKE ?2 OR COALESCE(group_name, '') LIKE ?2 OR COALESCE(proxy, '') LIKE ?2) ORDER BY name ASC LIMIT ?3 OFFSET ?4"
                 );
                 let mut stmt = self.conn.prepare(&sql)?;
                 let rows = stmt.query_map(params![tid, pattern, l, o], map_browser_row)?;
@@ -233,7 +233,7 @@ impl<'a> SqliteBrowserRepository<'a> {
             }
             (Some(tid), None) => {
                 let sql = format!(
-                    "SELECT {BROWSER_SELECT_COLS} FROM browsers WHERE tenant_id = ?1 ORDER BY name ASC LIMIT ?2 OFFSET ?3"
+                    "SELECT {BROWSER_SELECT_COLS} FROM browsers WHERE workspace_id = ?1 ORDER BY name ASC LIMIT ?2 OFFSET ?3"
                 );
                 let mut stmt = self.conn.prepare(&sql)?;
                 let rows = stmt.query_map(params![tid, l, o], map_browser_row)?;
@@ -378,10 +378,10 @@ impl<'a> SqliteBrowserRepository<'a> {
         Ok(())
     }
 
-    pub fn move_browser_tenant(&self, id: &str, target_tenant_id: &str) -> Result<usize> {
-        let tid = target_tenant_id.trim();
+    pub fn move_browser_workspace(&self, id: &str, target_workspace_id: &str) -> Result<usize> {
+        let tid = target_workspace_id.trim();
         self.conn.execute(
-            "UPDATE browsers SET tenant_id = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
+            "UPDATE browsers SET workspace_id = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
             params![tid, id],
         )
     }
@@ -403,7 +403,7 @@ mod tests {
     use crate::infrastructure::db::AutomationDb;
 
     #[test]
-    fn test_sqlite_browser_repo_crud_and_tenant_scoping() {
+    fn test_sqlite_browser_repo_crud_and_workspace_scoping() {
         let db = AutomationDb::new_in_memory().unwrap();
         let conn = db.raw_conn();
         let repo = SqliteBrowserRepository::new(conn);
@@ -423,7 +423,7 @@ mod tests {
 
         repo.create_browser_record(&CreateBrowserRecord {
             id: "b_test_1",
-            tenant_id: "tenant-alpha",
+            workspace_id: "workspace-alpha",
             name: "Profile 1",
             group_name: Some("marketing"),
             tags: Some(&initial_tags),
@@ -437,8 +437,8 @@ mod tests {
         .unwrap();
 
         repo.create_browser(
-            "b_default_tenant",
-            "Default Tenant Profile",
+            "b_default_workspace",
+            "Default Workspace Profile",
             None,
             None,
             None,
@@ -447,18 +447,18 @@ mod tests {
         .unwrap();
 
         let alpha_list = repo
-            .list_browsers(Some("tenant-alpha"), None, None, None)
+            .list_browsers(Some("workspace-alpha"), None, None, None)
             .unwrap();
         assert_eq!(alpha_list.len(), 1);
-        assert_eq!(alpha_list[0].tenant_id, "tenant-alpha");
+        assert_eq!(alpha_list[0].workspace_id, "workspace-alpha");
         assert_eq!(alpha_list[0].fingerprint_config.seed, Some(42));
         assert_eq!(alpha_list[0].tags, initial_tags);
 
         let default_list = repo
-            .list_browsers(Some(DEFAULT_TENANT_ID), None, None, None)
+            .list_browsers(Some(DEFAULT_WORKSPACE_ID), None, None, None)
             .unwrap();
         assert_eq!(default_list.len(), 1);
-        assert_eq!(default_list[0].id, "b_default_tenant");
+        assert_eq!(default_list[0].id, "b_default_workspace");
 
         // Partial PATCH preserves omitted fields
         let affected = repo
@@ -477,18 +477,19 @@ mod tests {
         assert_eq!(patched.proxy.as_deref(), Some("socks5://127.0.0.1:1080"));
         assert_eq!(patched.fingerprint_config.seed, Some(42));
 
-        // Move tenant
+        // Move workspace
         assert_eq!(
-            repo.move_browser_tenant("b_test_1", "tenant-beta").unwrap(),
+            repo.move_browser_workspace("b_test_1", "workspace-beta")
+                .unwrap(),
             1
         );
         assert!(
-            repo.list_browsers(Some("tenant-alpha"), None, None, None)
+            repo.list_browsers(Some("workspace-alpha"), None, None, None)
                 .unwrap()
                 .is_empty()
         );
         assert_eq!(
-            repo.list_browsers(Some("tenant-beta"), None, None, None)
+            repo.list_browsers(Some("workspace-beta"), None, None, None)
                 .unwrap()
                 .len(),
             1

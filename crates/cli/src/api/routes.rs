@@ -4,7 +4,6 @@ use crate::api::handlers::browsers::{
     set_default_browser, sideload_extension, start_browser, stop_browser, unbind_browser,
     update_browser, update_browser_extensions,
 };
-use crate::api::handlers::runtimes::{delete_runtime, install_runtime, list_runtimes, use_runtime};
 use crate::api::handlers::health::health;
 use crate::api::handlers::history::{clear_history, delete_history_item, get_history, get_logs};
 use crate::api::handlers::jobs::{
@@ -12,6 +11,7 @@ use crate::api::handlers::jobs::{
     submit_job, worker_sse,
 };
 use crate::api::handlers::lint::lint_workflow;
+use crate::api::handlers::runtimes::{delete_runtime, install_runtime, list_runtimes, use_runtime};
 use crate::api::handlers::secrets::{
     delete_secret, get_secrets, list_credentials, pull_secrets, push_secrets, rotate_secrets,
     set_secret,
@@ -20,8 +20,8 @@ use crate::api::handlers::settings::{get_settings, patch_settings, update_settin
 use crate::api::handlers::sse::sse;
 use crate::api::handlers::system::{
     cloud_login, cloud_logout, desktop_auth_callback, desktop_auth_callback_post, get_cloud_status,
-    get_metrics, get_system_info, get_tenants, kill_browsers, open_studio, start_desktop_auth,
-    switch_tenant, trigger_cloud_sync,
+    get_metrics, get_system_info, get_workspaces, kill_browsers, open_studio, start_desktop_auth,
+    switch_workspace, trigger_cloud_sync,
 };
 use crate::api::handlers::ws::ws_handler;
 use axum::{Router, response::IntoResponse, routing::delete, routing::get, routing::post};
@@ -55,8 +55,8 @@ use utoipa_swagger_ui::SwaggerUi;
         crate::api::handlers::system::trigger_cloud_sync,
         crate::api::handlers::system::cloud_login,
         crate::api::handlers::system::cloud_logout,
-        crate::api::handlers::system::get_tenants,
-        crate::api::handlers::system::switch_tenant,
+        crate::api::handlers::system::get_workspaces,
+        crate::api::handlers::system::switch_workspace,
         crate::api::handlers::system::start_desktop_auth,
         crate::api::handlers::system::desktop_auth_callback,
         crate::api::handlers::system::desktop_auth_callback_post,
@@ -114,10 +114,10 @@ use utoipa_swagger_ui::SwaggerUi;
         schemas(
             crate::core::error::ApiErrorResponse,
             crate::api::handlers::health::HealthResponse,
-            crate::api::handlers::system::TenantListResponse,
-            crate::api::handlers::system::SwitchTenantRequest,
-            crate::api::handlers::system::SwitchTenantResponse,
-            crate::infrastructure::cloud::TenantInfo,
+            crate::api::handlers::system::WorkspaceListResponse,
+            crate::api::handlers::system::SwitchWorkspaceRequest,
+            crate::api::handlers::system::SwitchWorkspaceResponse,
+            crate::infrastructure::cloud::WorkspaceInfo,
             crate::api::handlers::system::CloudStatusResponse,
             crate::api::handlers::system::CloudSyncResponse,
             crate::api::handlers::system::CloudLoginRequest,
@@ -214,8 +214,8 @@ pub fn create_router(state: crate::AppState) -> Router {
             "/auth/callback",
             get(desktop_auth_callback).post(desktop_auth_callback_post),
         )
-        .route("/system/tenants", get(get_tenants))
-        .route("/system/tenants/switch", post(switch_tenant))
+        .route("/system/workspaces", get(get_workspaces))
+        .route("/system/workspaces/switch", post(switch_workspace))
         .route(
             "/system/settings",
             get(get_settings).put(update_settings).patch(patch_settings),
@@ -229,7 +229,7 @@ pub fn create_router(state: crate::AppState) -> Router {
         .route("/secrets/credentials/{name}", delete(delete_secret))
         .route("/secrets/credentials/push", post(push_secrets))
         .route("/secrets/credentials/pull", post(pull_secrets))
-        .route("/secrets/tenant-keys/rotate", post(rotate_secrets))
+        .route("/secrets/workspace-keys/rotate", post(rotate_secrets))
         .route("/lint", post(lint_workflow))
         .route("/jobs", post(submit_job).get(get_active_jobs))
         .route("/jobs/{job_id}", delete(kill_job))
@@ -240,7 +240,7 @@ pub fn create_router(state: crate::AppState) -> Router {
         .route("/jobs/{job_id}/pause", post(pause_job))
         .route("/jobs/{job_id}/resume", post(resume_job))
         .route("/jobs/{job_id}/logs", post(job_log))
-        .route("/internal/worker/events", get(worker_sse))
+        .route("/internal/daemon/events", get(worker_sse))
         .route("/history", get(get_history).delete(clear_history))
         .route("/history/{job_id}/logs", get(get_logs))
         .route("/history/{job_id}", delete(delete_history_item))
@@ -270,7 +270,10 @@ pub fn create_router(state: crate::AppState) -> Router {
         )
         .route("/browsers/import-csv", post(import_csv))
         .route("/browsers/runtimes", get(list_runtimes))
-        .route("/browsers/runtimes/{version}/install", post(install_runtime))
+        .route(
+            "/browsers/runtimes/{version}/install",
+            post(install_runtime),
+        )
         .route("/browsers/runtimes/{version}/use", post(use_runtime))
         .route("/browsers/runtimes/{version}", delete(delete_runtime))
         .route("/ws", get(ws_handler));
@@ -412,7 +415,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_system_tenants() {
+    async fn test_get_system_workspaces() {
         let state = create_test_state();
         let app = create_router(state);
 
@@ -421,7 +424,7 @@ mod tests {
 
         let req = Request::builder()
             .method("GET")
-            .uri("/api/v1/system/tenants")
+            .uri("/api/v1/system/workspaces")
             .body(axum::body::Body::empty())
             .unwrap();
 
@@ -440,7 +443,7 @@ mod tests {
         );
         let json_str = json_result.unwrap();
         assert!(json_str.contains("CLI & Core Gateway API"));
-        assert!(json_str.contains("/api/v1/system/tenants"));
+        assert!(json_str.contains("/api/v1/system/workspaces"));
         assert!(json_str.contains("/api/v1/system/cloud/auth/start"));
         assert!(json_str.contains("/api/v1/auth/callback"));
         assert!(json_str.contains("/api/v1/browsers"));

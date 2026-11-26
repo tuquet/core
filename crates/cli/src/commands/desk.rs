@@ -57,7 +57,7 @@ pub fn resolve_daemon_port() -> u16 {
     std::env::var(crate::constants::ENV_DAEMON_PORT)
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(crate::constants::DEFAULT_RUNNER_PORT)
+        .unwrap_or(crate::constants::DEFAULT_DAEMON_PORT)
 }
 
 pub async fn is_daemon_healthy(port: u16) -> bool {
@@ -87,7 +87,7 @@ pub async fn ensure_daemon_online(port: u16) -> Result<(), Box<dyn std::error::E
     let current_exe = std::env::current_exe()?;
     let mut cmd = std::process::Command::new(&current_exe);
     cmd.args([
-        "worker",
+        "daemon",
         "start",
         "-H",
         "127.0.0.1",
@@ -128,24 +128,22 @@ pub fn resolve_route(args: &DeskArgs) -> &str {
         return "/automation/devices";
     }
     if args.browsers {
-        return "/automation/browsers";
+        return "/browsers";
     }
     if args.workflows {
-        return "/automation/workflows";
+        return "/tasks";
     }
     let Some(page) = args.page.as_deref() else {
-        return "/automation/overview";
+        return "/dashboard/overview";
     };
     match page.to_lowercase().as_str() {
-        "jobs" | "job" => "/automation/jobs",
-        "devices" | "device" | "node" | "nodes" => "/automation/devices",
-        "browsers" | "browser" | "profile" | "profiles" => "/automation/browsers",
-        "workflows" | "workflow" => "/automation/workflows",
-        "overview" => "/automation/overview",
-        "dashboard" | "analytics" => "/dashboard/analytics",
-        "secrets" | "secret" => "/secrets/credentials",
+        "dashboard" => "/dashboard/overview",
+        "browsers" => "/browsers",
+        "tasks" => "/tasks",
+        "workspaces" => "/workspaces",
+        "system" => "/system",
         other if other.starts_with('/') => page,
-        _ => "/automation/overview",
+        _ => "/dashboard/overview",
     }
 }
 
@@ -227,11 +225,9 @@ pub async fn handle(args: DeskArgs) -> Result<(), Box<dyn std::error::Error>> {
 fn find_installed_desktop_binary() -> Option<PathBuf> {
     let candidates = [
         desktop_bin_path(),
-        PathBuf::from("console/apps/workstation/src-tauri/target/release/Operon.exe"),
-        PathBuf::from("../console/apps/workstation/src-tauri/target/release/Operon.exe"),
-        PathBuf::from(
-            "../console/apps/workstation/src-tauri/target/release/operon-workstation.exe",
-        ),
+        PathBuf::from("console/apps/desktop/src-tauri/target/release/Operon.exe"),
+        PathBuf::from("../console/apps/desktop/src-tauri/target/release/Operon.exe"),
+        PathBuf::from("../console/apps/desktop/src-tauri/target/release/operon-desktop.exe"),
     ];
     candidates.into_iter().find(|p| p.exists())
 }
@@ -319,12 +315,12 @@ mod tests {
     #[test]
     fn test_resolve_route() {
         let mut args = default_args();
-        assert_eq!(resolve_route(&args), "/automation/overview");
-        args.jobs = true;
-        assert_eq!(resolve_route(&args), "/automation/jobs");
-        args.jobs = false;
-        args.page = Some("browsers".to_string());
-        assert_eq!(resolve_route(&args), "/automation/browsers");
+        assert_eq!(resolve_route(&args), "/dashboard/overview");
+        args.browsers = true;
+        assert_eq!(resolve_route(&args), "/browsers");
+        args.browsers = false;
+        args.page = Some("tasks".to_string());
+        assert_eq!(resolve_route(&args), "/tasks");
         args.page = Some("/custom/view".to_string());
         assert_eq!(resolve_route(&args), "/custom/view");
     }

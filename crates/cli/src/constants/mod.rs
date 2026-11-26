@@ -2,8 +2,8 @@
 //! Single Source of Truth (SSOT) Architecture
 
 pub mod ports {
-    /// Default port for Automation / Runner HTTP and WebSocket API server
-    pub const DEFAULT_RUNNER_PORT: u16 = 8765;
+    /// Default port for Local Daemon HTTP and WebSocket API server
+    pub const DEFAULT_DAEMON_PORT: u16 = 8765;
     /// Default SOCKS5 proxy port
     pub const DEFAULT_SOCKS5_PORT: u16 = 1080;
     /// Default HTTP gateway proxy port
@@ -29,7 +29,7 @@ pub mod pillars {
     pub const PILLAR_GATEWAY: &str = "gateway";
     pub const PILLAR_BROWSER: &str = "browser";
     pub const PILLAR_AUTOMATION: &str = "automation";
-    pub const PILLAR_WORKER: &str = "worker";
+    pub const PILLAR_WORKER: &str = "daemon";
     pub const PILLAR_CLOUD: &str = "cloud";
     pub const PILLAR_SYSTEM: &str = "system";
 
@@ -45,7 +45,7 @@ pub mod pillars {
 
 pub mod envs {
     // Canonical OperonEcosystem Environment Variables (SSOT) — techstack naming (plan 011).
-    // No brand prefixes (TQ_/OPERON_/SPECTER_/AUTOMA_ are banned). One name per variable,
+    // No brand prefixes (TQ_/OPERON_/OPERON_/AUTOMA_ are banned). One name per variable,
     // no fallback chains — missing required values fail fast at the call site.
     pub const ENV_DATA_DIR: &str = "DATA_DIR";
     pub const ENV_APP_ENV: &str = "APP_ENV";
@@ -82,15 +82,15 @@ pub mod paths {
     pub const FILE_GATEWAY_JSON: &str = "gateway.json";
     pub const FILE_BROWSER_JSON: &str = "browser.json";
     pub const FILE_AUTOMATION_JSON: &str = "automation.json";
-    pub const FILE_WORKER_JSON: &str = "worker.json";
+    pub const FILE_WORKER_JSON: &str = "daemon.json";
     pub const FILE_SYSTEM_JSON: &str = "system.json";
     pub const FILE_IDENTITY_JSON: &str = ".identity.json";
     pub const FILE_ENVIRONMENTS_JSON: &str = "environments.json";
-    pub const FILE_WORKER_PID: &str = "worker.pid";
-    pub const FILE_WORKER_LOG: &str = "worker.log";
+    pub const FILE_WORKER_PID: &str = "daemon.pid";
+    pub const FILE_WORKER_LOG: &str = "daemon.log";
 
     pub const DIR_DATA: &str = "data";
-    pub const DIR_WORKER: &str = "worker";
+    pub const DIR_WORKER: &str = "daemon";
     pub const DIR_RUNTIMES: &str = "runtimes";
     pub const DIR_PROFILES: &str = "profiles";
     pub const DIR_EXTENSIONS: &str = "extensions";

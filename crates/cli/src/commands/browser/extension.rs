@@ -337,7 +337,7 @@ pub async fn handle_ext(
                 "Launch command: chrome.exe --load-extension=\"{}\"",
                 load_arg
             ));
-            card.with_footer("Ready to launch and attach to worker daemon");
+            card.with_footer("Ready to launch and attach to daemon daemon");
             println!();
             card.print();
             println!();
@@ -375,7 +375,7 @@ pub async fn setup_extension(
             "Launch command: chrome.exe --load-extension=\"{}\"",
             ext_dir.display()
         ));
-        card.with_footer("Ready to launch and attach to worker daemon");
+        card.with_footer("Ready to launch and attach to daemon daemon");
     }
     println!();
     card.print();

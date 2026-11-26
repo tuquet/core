@@ -212,7 +212,7 @@ impl TuiView {
         Self::print_box_line(
             stdout,
             width,
-            "  • opn worker start   : Start background worker daemon",
+            "  • opn daemon start   : Start background daemon daemon",
         )?;
         count += 1;
         Ok(count)
@@ -384,7 +384,7 @@ impl TuiView {
         Self::print_box_line(
             stdout,
             width,
-            "  • 'b' / 'B'         : Start / Stop Specter Gateway tunnel daemons",
+            "  • 'b' / 'B'         : Start / Stop Operon Gateway tunnel daemons",
         )?;
         count += 1;
         Self::print_box_line(
@@ -411,7 +411,7 @@ impl TuiView {
         Self::print_box_line(
             stdout,
             width,
-            "● CLOUD AUTHENTICATION & MULTI-TENANT IDENTITY",
+            "● CLOUD AUTHENTICATION & MULTI-WORKSPACE IDENTITY",
         )?;
         count += 1;
         Self::print_box_line(stdout, width, "")?;
@@ -432,13 +432,13 @@ impl TuiView {
         Self::print_box_line(
             stdout,
             width,
-            &format!("  Workstation Host    : {}", state.cloud.host_name),
+            &format!("  Desktop Host    : {}", state.cloud.host_name),
         )?;
         count += 1;
         Self::print_box_line(
             stdout,
             width,
-            &format!("  Active Tenant Scope : {}", state.cloud.tenant_name),
+            &format!("  Active Workspace Scope : {}", state.cloud.workspace_name),
         )?;
         count += 1;
         Self::print_box_line(
@@ -464,7 +464,7 @@ impl TuiView {
         Self::print_box_line(
             stdout,
             width,
-            "  • opn auth login     : Authenticate operator account and pair workstation",
+            "  • opn auth login     : Authenticate operator account and pair desktop",
         )?;
         count += 1;
         Self::print_box_line(
@@ -476,13 +476,13 @@ impl TuiView {
         Self::print_box_line(
             stdout,
             width,
-            "  • opn auth tenant    : Switch or list accessible multi-tenant workspaces",
+            "  • opn auth workspace    : Switch or list accessible multi-workspace workspaces",
         )?;
         count += 1;
         Self::print_box_line(
             stdout,
             width,
-            "  • opn auth logout    : Revoke local token and disconnect workstation",
+            "  • opn auth logout    : Revoke local token and disconnect desktop",
         )?;
         count += 1;
         Ok(count)

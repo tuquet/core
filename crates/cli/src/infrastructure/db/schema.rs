@@ -30,7 +30,7 @@ pub fn init_db(conn: &Connection) -> Result<()> {
 
         CREATE TABLE IF NOT EXISTS browsers (
             id TEXT PRIMARY KEY,
-            tenant_id TEXT NOT NULL DEFAULT 'local-default',
+            workspace_id TEXT NOT NULL DEFAULT 'local-default',
             name TEXT NOT NULL,
             group_name TEXT DEFAULT 'default',
             tags TEXT DEFAULT '[]',
@@ -62,25 +62,6 @@ pub fn init_db(conn: &Connection) -> Result<()> {
     let _ = conn.execute("DROP TABLE IF EXISTS storage_variables", []);
     let _ = conn.execute("DROP TABLE IF EXISTS workflows", []);
 
-    // Safe & Idempotent Schema Migration (Edge Case 6.1):
-    // Ensure all canonical columns exist on 'browsers' table for pre-existing databases
-    let mut stmt = conn.prepare("PRAGMA table_info(browsers)")?;
-    let columns = stmt
-        .query_map([], |row| row.get::<_, String>(1))?
-        .filter_map(Result::ok)
-        .collect::<Vec<String>>();
-
-    // Canonicalize pre-existing workspace_id column to tenant_id without losing rows
-    let has_workspace_col = columns.iter().any(|c| c == "workspace_id");
-    let has_tenant_col = columns.iter().any(|c| c == "tenant_id");
-    if has_workspace_col && !has_tenant_col {
-        let _ = conn.execute("DROP INDEX IF EXISTS idx_browsers_workspace", []);
-        conn.execute(
-            "ALTER TABLE browsers RENAME COLUMN workspace_id TO tenant_id",
-            [],
-        )?;
-    }
-
     let mut stmt_after = conn.prepare("PRAGMA table_info(browsers)")?;
     let current_cols = stmt_after
         .query_map([], |row| row.get::<_, String>(1))?
@@ -89,8 +70,8 @@ pub fn init_db(conn: &Connection) -> Result<()> {
 
     let browser_migrations = [
         (
-            "tenant_id",
-            "ALTER TABLE browsers ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'local-default'",
+            "workspace_id",
+            "ALTER TABLE browsers ADD COLUMN workspace_id TEXT NOT NULL DEFAULT 'local-default'",
         ),
         (
             "group_name",
@@ -121,7 +102,7 @@ pub fn init_db(conn: &Connection) -> Result<()> {
     }
 
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_browsers_tenant ON browsers(tenant_id)",
+        "CREATE INDEX IF NOT EXISTS idx_browsers_workspace ON browsers(workspace_id)",
         [],
     )?;
 

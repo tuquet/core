@@ -21,7 +21,7 @@ pub struct SystemConfig {
 fn default_machine_name() -> String {
     std::env::var("COMPUTERNAME")
         .or_else(|_| std::env::var("HOSTNAME"))
-        .unwrap_or_else(|_| "WORKSTATION".to_string())
+        .unwrap_or_else(|_| "DESKTOP".to_string())
 }
 fn default_cloud_url() -> String {
     crate::constants::DEFAULT_CLOUD_URL.to_string()

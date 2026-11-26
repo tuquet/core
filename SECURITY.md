@@ -27,7 +27,7 @@ Instead, report security vulnerabilities through one of the following channels:
 
 2. **Email Disclosure**:
    - Send an email to **security@tuquet.dev** with:
-     - A description of the vulnerability and affected subsystem (`crates/cli`, `crates/worker`, `crates/browser`, `cloud`, or `console`).
+     - A description of the vulnerability and affected subsystem (`crates/cli`, `crates/daemon`, `crates/browser`, `cloud`, or `console`).
      - Step-by-step instructions or proof-of-concept (PoC) to reproduce the issue.
      - Potential attack vectors and impact assessment.
 

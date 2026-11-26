@@ -72,7 +72,7 @@ pub async fn run(fix: bool, format: OutputFormat) -> Result<(), Box<dyn std::err
         verdict_card.print();
 
         clack_outro(if r.ready {
-            "Workstation is 100% healthy and ready."
+            "Desktop is 100% healthy and ready."
         } else {
             "Diagnostics completed with action items above."
         });

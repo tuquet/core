@@ -215,8 +215,8 @@ impl NetworkEndpoint {
     }
 }
 
-/// Helper to build standard workstation endpoints for services
-pub fn default_workstation_endpoints(
+/// Helper to build standard desktop endpoints for services
+pub fn default_desktop_endpoints(
     socks5_port: u16,
     socks5_active: bool,
     http_port: u16,

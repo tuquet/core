@@ -47,7 +47,7 @@ impl ExtensionRegistry {
                 name: "Automa MV3 Runner Extension".to_string(),
                 version: "1.0.0".to_string(),
                 description: Some(
-                    "Built-in worker driver for Chrome DevTools Protocol automation".to_string(),
+                    "Built-in daemon driver for Chrome DevTools Protocol automation".to_string(),
                 ),
                 path: default_automa_path,
                 enabled: true,

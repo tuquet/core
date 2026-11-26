@@ -35,9 +35,9 @@ impl AppConfig {
             .unwrap_or_else(|_| crate::constants::DEFAULT_HOST.to_string());
 
         let mut server_port = env::var(crate::constants::ENV_DAEMON_PORT)
-            .unwrap_or_else(|_| crate::constants::DEFAULT_RUNNER_PORT.to_string())
+            .unwrap_or_else(|_| crate::constants::DEFAULT_DAEMON_PORT.to_string())
             .parse()
-            .unwrap_or(crate::constants::DEFAULT_RUNNER_PORT);
+            .unwrap_or(crate::constants::DEFAULT_DAEMON_PORT);
 
         // Check command line arguments for --port / -p, --host / -H
         let args: Vec<String> = env::args().collect();

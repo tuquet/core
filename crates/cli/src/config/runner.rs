@@ -24,7 +24,7 @@ fn default_host() -> String {
     crate::constants::DEFAULT_HOST.to_string()
 }
 fn default_port() -> u16 {
-    crate::constants::DEFAULT_RUNNER_PORT
+    crate::constants::DEFAULT_DAEMON_PORT
 }
 fn default_log_level() -> String {
     "info".to_string()

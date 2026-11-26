@@ -1,6 +1,6 @@
 # Core — Rust Engine Directives
 
-> **Contracts:** [`./CONSTRAINTS.md`](./CONSTRAINTS.md) · Root directives & glossary: [`../AGENTS.md`](../AGENTS.md), [`../docs/GLOSSARY.md`](../docs/GLOSSARY.md). Never weaken or bypass assertions.
+> **Contracts:** [`./CONSTRAINTS.md`](./CONSTRAINTS.md) · Root directives & glossary: [`../AGENTS.md`](../AGENTS.md), [`../GLOSSARY.json`](../GLOSSARY.json). Never weaken or bypass assertions.
 
 ## 1. Scope & Subsystems
 
@@ -9,7 +9,7 @@ Device-local execution plane (`tuquet/core` submodule under `operon/core`):
 | Crate | Path | Role |
 | :--- | :--- | :--- |
 | **cli** (`opn`) | `./crates/cli` | Master binary (`opn`), local `daemon` API (`:8765`), automation runner. |
-| **worker** | `./crates/worker` | Process supervisor & cloud `SKIP LOCKED` claim loop. |
+| **daemon** | `./crates/daemon` | Process supervisor & cloud `SKIP LOCKED` claim loop. |
 | **browser** | `./crates/browser` | Stealth Chromium launcher, CDP driver, `browser profile` isolation. |
 
 ## 2. Verification

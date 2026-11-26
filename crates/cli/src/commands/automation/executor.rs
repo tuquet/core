@@ -85,7 +85,7 @@ pub async fn run_workflow(
     };
 
     crate::ui::Notify::info(
-        "Submitting workflow to native browser worker via CDP (Zero Extension Stealth)..."
+        "Submitting workflow to native browser daemon via CDP (Zero Extension Stealth)..."
             .to_string(),
     );
 
@@ -106,7 +106,7 @@ pub async fn run_workflow(
     };
 
     crate::ui::Notify::info(format!(
-        "Workflow dispatched [Job ID: {}]. Waiting for worker execution...",
+        "Workflow dispatched [Job ID: {}]. Waiting for daemon execution...",
         job_id
     ));
 
@@ -139,9 +139,9 @@ pub async fn run_workflow(
                                 }
                             }
                             if let Some(log_msg) = val.get("message").and_then(|v| v.as_str()) {
-                                println!("[worker] {}", log_msg);
+                                println!("[daemon] {}", log_msg);
                             } else if let Some(data) = val.get("data") {
-                                println!("[worker] {}", data);
+                                println!("[daemon] {}", data);
                             }
                         }
                     }

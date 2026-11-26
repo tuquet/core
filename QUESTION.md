@@ -1,8 +1,8 @@
-# Chuyên Gia Browser Automation Fingerprint & Multi-Tenant Enterprise: Bộ Câu Hỏi Thẩm Định & Đối Ứng Codebase
+# Chuyên Gia Browser Automation Fingerprint & Multi-Workspace Enterprise: Bộ Câu Hỏi Thẩm Định & Đối Ứng Codebase
 
 > **Tài liệu:** `QUESTION.md`  
 > **Người thực hiện:** Chuyên gia Kiến trúc Browser Automation & Antidetect Fingerprint (Đóng vai)  
-> **Hệ quy chiếu thẩm định:** Hệ thống Multi-Tenant Enterprise, Chống Fraud & Bot Detection (Cloudflare Turnstile, DataDome, Akamai, Kasada, Fingerprint.com, CreepJS), Khả năng cô lập & mở rộng trên Worker Fleet.  
+> **Hệ quy chiếu thẩm định:** Hệ thống Multi-Workspace Enterprise, Chống Fraud & Bot Detection (Cloudflare Turnstile, DataDome, Akamai, Kasada, Fingerprint.com, CreepJS), Khả năng cô lập & mở rộng trên Worker Fleet.  
 > **Quy ước trạng thái đối ứng:**
 > - `[ĐÃ CÓ TRONG CODE]`: Kèm đường dẫn file và phân tích logic code hiện tại.
 > - `[CHƯA CÓ / ĐANG THIẾU]`: Nêu rõ khoảng trống kiến trúc thực tế của codebase.
@@ -91,7 +91,7 @@
 * **Câu hỏi chuyên gia:** *"Khi công cụ tự động hóa chạy script inject để click/lấy dữ liệu, các biến trung gian hoặc các hàm gắn vào `window` rất dễ bị script trang web đọc được. Bạn dùng cơ chế cô lập nào?"*
 * **Đối ứng code hiện tại:**
   - `[ĐÃ CÓ TRONG CODE]`: Triển khai chuẩn **Isolated Worlds** của Chrome DevTools Protocol theo đặc tả Patchright.
-  - Vị trí: [`crates/worker/src/drivers/cdp/stealth.rs`](file:///C:/Users/ndtu6/Repository/operon/crates/worker/src/drivers/cdp/stealth.rs#L19-L55).
+  - Vị trí: [`crates/daemon/src/drivers/cdp/stealth.rs`](file:///C:/Users/ndtu6/Repository/operon/crates/daemon/src/drivers/cdp/stealth.rs#L19-L55).
   - Sử dụng lệnh `Page.createIsolatedWorld` với tên context riêng (`stealth_context`). Toàn bộ mã thực thi của engine chạy trong thế giới biệt lập này, website JavaScript hoàn toàn không thể truy cập, bắt lỗi stack trace hay kiểm tra thuộc tính.
 
 ---
@@ -100,20 +100,20 @@
 * **Câu hỏi chuyên gia:** *"Nhiều bot chỉ gọi `element.click()` hoặc dispatch mouse event nhảy thẳng toạ độ `(x1, y1) -> (x2, y2)` theo đường thẳng tức thì trong 0ms. Các bộ phát hiện bot ghi nhận gia tốc và quỹ đạo chuột để bắt bot. Bạn xử lý như thế nào?"*
 * **Đối ứng code hiện tại:**
   - `[ĐÃ CÓ TRONG CODE]`: Sử dụng **Human Interaction Engine** với quỹ đạo cong **Cubic Bézier Curve** và **FastRng Jitter**.
-  - Vị trí: [`crates/worker/src/drivers/cdp/interaction.rs`](file:///C:/Users/ndtu6/Repository/operon/crates/worker/src/drivers/cdp/interaction.rs#L62-L80).
+  - Vị trí: [`crates/daemon/src/drivers/cdp/interaction.rs`](file:///C:/Users/ndtu6/Repository/operon/crates/daemon/src/drivers/cdp/interaction.rs#L62-L80).
   - Thuật toán: Chuột di chuyển từ `(start_x, start_y)` đến `(target_x, target_y)` qua các điểm kiểm soát uốn cong Bézier ngẫu nhiên, chia nhỏ quãng đường thành các bước với thời gian trễ dao động (jitter) để giả lập chuyển động cơ học tự nhiên của bàn tay.
 
 ---
 
-## Phần 4: Kiến Trúc Multi-Tenant Enterprise & Cô Lập Session
+## Phần 4: Kiến Trúc Multi-Workspace Enterprise & Cô Lập Session
 
-### Q4.1: Làm sao đảm bảo Profile giữa các Tenant doanh nghiệp không bị lẫn lộn dữ liệu, Cookie, Cache và LocalStorage trên đĩa cứng?
-* **Câu hỏi chuyên gia:** *"Trong môi trường Multi-Tenant Enterprise, nếu Tenant A và Tenant B cùng chạy automation trên cùng một Worker Node, làm sao cam kết 100% không xảy ra cross-tenant data leak hoặc dùng chung Chromium user-data-dir?"*
+### Q4.1: Làm sao đảm bảo Profile giữa các Workspace doanh nghiệp không bị lẫn lộn dữ liệu, Cookie, Cache và LocalStorage trên đĩa cứng?
+* **Câu hỏi chuyên gia:** *"Trong môi trường Multi-Workspace Enterprise, nếu Workspace A và Workspace B cùng chạy automation trên cùng một Worker Node, làm sao cam kết 100% không xảy ra cross-workspace data leak hoặc dùng chung Chromium user-data-dir?"*
 * **Đối ứng code hiện tại:**
   - `[ĐÃ CÓ TRONG CODE]`:
     - Ở tầng Worker/Host: Mỗi profile có một thư mục sandbox riêng biệt định danh theo Profile ID: `~/.operon/browser/profiles/<profile_id>/` ([`crates/browser/src/profile.rs#L251`](file:///C:/Users/ndtu6/Repository/operon/crates/browser/src/profile.rs#L251)).
-    - Ở tầng Database Supabase: Schema isolation `browsers` và RLS (Row Level Security) theo `tenant_id` trên mọi bảng: `browsers.profiles`, `browsers.active_leases` ([`cloud/supabase/plugins/browsers/install.sql`](file:///C:/Users/ndtu6/Repository/operon/cloud/supabase/plugins/browsers/install.sql)).
-    - Ở tầng Cloud Storage: Bucket `browser-profiles` dùng RLS phân quyền theo đường dẫn prefix tenant: `<tenant_id>/<profile_id>.tar.zst`, chặn hoàn toàn việc tenant này đọc storage của tenant khác thông qua hàm `public.is_valid_browser_storage_tenant()`.
+    - Ở tầng Database Supabase: Schema isolation `browsers` và RLS (Row Level Security) theo `workspace_id` trên mọi bảng: `browsers.profiles`, `browsers.active_leases` ([`cloud/supabase/plugins/browsers/install.sql`](file:///C:/Users/ndtu6/Repository/operon/cloud/supabase/plugins/browsers/install.sql)).
+    - Ở tầng Cloud Storage: Bucket `browser-profiles` dùng RLS phân quyền theo đường dẫn prefix workspace: `<workspace_id>/<profile_id>.tar.zst`, chặn hoàn toàn việc workspace này đọc storage của workspace khác thông qua hàm `public.is_valid_browser_storage_workspace()`.
 
 ---
 
@@ -154,4 +154,4 @@
 | **Noise Level Profile Schema** | ✅ `ĐÃ CÓ` | `FingerprintNoiseLevel` (Off, Subtle, Balanced, Aggressive) tích hợp vào Profile struct. |
 
 ---
-*Tài liệu này đã được đồng bộ trực tiếp với toàn bộ codebase của Operon (`crates/browser`, `crates/worker`, `crates/cli`, `cloud/supabase/plugins/browsers`). Sẵn sàng cho quá trình review chi tiết từ bạn.*
+*Tài liệu này đã được đồng bộ trực tiếp với toàn bộ codebase của Operon (`crates/browser`, `crates/daemon`, `crates/cli`, `cloud/supabase/plugins/browsers`). Sẵn sàng cho quá trình review chi tiết từ bạn.*

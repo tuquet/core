@@ -44,7 +44,7 @@ pub async fn run(args: SetupArgs) -> Result<(), Box<dyn std::error::Error>> {
         if args.quick {
             "Quick Core Provisioning"
         } else {
-            "Workstation Onboarding & Environment Wizard"
+            "Desktop Onboarding & Environment Wizard"
         },
     );
 
@@ -65,11 +65,11 @@ pub async fn run(args: SetupArgs) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // OPTIONAL 1: Specter Gateway (VPS Mesh & SOCKS5 Proxy)
+    // OPTIONAL 1: Operon Gateway (VPS Mesh & SOCKS5 Proxy)
     // ─────────────────────────────────────────────────────────────────────────────
     let want_gateway = if is_interactive {
         clack_confirm(
-            "Configure Specter Gateway (VPS SOCKS5 proxy via Cloudflare)?",
+            "Configure Operon Gateway (VPS SOCKS5 proxy via Cloudflare)?",
             false,
         )?
         .unwrap_or(false)
@@ -80,7 +80,7 @@ pub async fn run(args: SetupArgs) -> Result<(), Box<dyn std::error::Error>> {
     if want_gateway {
         clack_step_skip("Network gateway decoupled: manage using 'tunnel on'");
     } else {
-        clack_step_skip("Specter Gateway (configure anytime via 'opn setup gateway')");
+        clack_step_skip("Operon Gateway (configure anytime via 'opn setup gateway')");
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -105,7 +105,7 @@ pub async fn run(args: SetupArgs) -> Result<(), Box<dyn std::error::Error>> {
     // OPTIONAL 3: Cloud Pairing
     // ─────────────────────────────────────────────────────────────────────────────
     let want_cloud = if is_interactive {
-        clack_confirm("Pair workstation with TQ Cloud (Supabase)?", false)?.unwrap_or(false)
+        clack_confirm("Pair desktop with TQ Cloud (Supabase)?", false)?.unwrap_or(false)
     } else {
         false
     };
@@ -116,6 +116,6 @@ pub async fn run(args: SetupArgs) -> Result<(), Box<dyn std::error::Error>> {
         clack_step_skip("Cloud pairing (pair anytime via 'opn login')");
     }
 
-    clack_outro("Workstation setup complete! Run 'opn status' or 'opn tui' to get started.");
+    clack_outro("Desktop setup complete! Run 'opn status' or 'opn tui' to get started.");
     Ok(())
 }

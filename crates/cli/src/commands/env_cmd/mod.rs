@@ -74,7 +74,7 @@ pub const WINDOWS_ESSENTIAL_ENV_VARS: &[&str] = &[
 ];
 
 /// Non-secret Operonruntime environment variables that can safely ride along
-pub const CONTEXT_VARS: &[&str] = &["DATA_DIR", "TENANT_ID", "SESSION_ID", "PROFILE"];
+pub const CONTEXT_VARS: &[&str] = &["DATA_DIR", "WORKSPACE_ID", "SESSION_ID", "PROFILE"];
 
 /// Check if an environment variable name is considered secret
 pub fn is_secret_env_name(name: &str) -> bool {
@@ -759,7 +759,7 @@ mod tests {
             ("DATABASE_PASSWORD", "db_pwd_123"),
             ("TELEGRAM_BOT_TOKEN", "bot_12345"),
             ("TEMP", "C:\\Temp"),
-            ("TENANT_ID", "00000000-0000-0000-0000-000000000001"),
+            ("WORKSPACE_ID", "00000000-0000-0000-0000-000000000001"),
             ("USER_DEFINED_SECRET", "should_be_dropped"),
             ("NODE_AUTH_TOKEN", "should_be_dropped"),
         ];
@@ -776,7 +776,7 @@ mod tests {
         // Safe variables must remain
         assert!(clean.contains_key("PATH"));
         assert!(clean.contains_key("TEMP"));
-        assert!(clean.contains_key("TENANT_ID"));
+        assert!(clean.contains_key("WORKSPACE_ID"));
     }
 
     #[test]

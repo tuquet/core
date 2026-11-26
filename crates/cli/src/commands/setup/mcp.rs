@@ -115,13 +115,13 @@ fn inject_mcp_config(config_file: &Path) -> Result<(), Box<dyn std::error::Error
         "args": ["mcp"]
     });
 
-    // Set operon and remove old specter key if present
+    // Set operon and remove old operon key if present
     config_val["mcpServers"]["operon"] = mcp_def.clone();
     if let Some(servers) = config_val
         .get_mut("mcpServers")
         .and_then(|v| v.as_object_mut())
     {
-        servers.remove("specter");
+        servers.remove("operon");
     }
 
     let pretty = serde_json::to_string_pretty(&config_val)?;

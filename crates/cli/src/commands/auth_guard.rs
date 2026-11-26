@@ -11,7 +11,7 @@ pub enum AuthGuardError {
     Io(String),
 }
 
-/// Enforces that the workstation is authenticated with Cloud fleet credentials.
+/// Enforces that the desktop is authenticated with Cloud fleet credentials.
 /// If not logged in, it prints a Google/AGY-standard notification card and returns an error.
 pub async fn require_auth(command_context: &str) -> Result<DeviceCredentials, AuthGuardError> {
     let config = AppConfig::load();
@@ -33,16 +33,16 @@ fn render_unauthenticated_card(command_context: &str) {
     card.with_badge(crate::ui::badge_error("UNAUTHENTICATED"));
     card.with_min_width(68);
     card.add_line(format!(
-        "Command '{}' requires an authenticated operator or workstation session.",
+        "Command '{}' requires an authenticated operator or desktop session.",
         command_context
     ));
     card.add_line("");
-    card.add_line("To log in and pair your workstation, run:");
+    card.add_line("To log in and pair your desktop, run:");
     card.add_line("  $ opn auth login");
     card.add_line("");
     card.add_line("Or inspect authentication status:");
     card.add_line("  $ opn auth status");
-    card.with_footer("Google Standard Workstation Security Policy (Invariant A2)");
+    card.with_footer("Google Standard Desktop Security Policy (Invariant A2)");
     println!();
     card.print();
     println!();

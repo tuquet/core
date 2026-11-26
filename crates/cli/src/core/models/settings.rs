@@ -178,34 +178,34 @@ impl Default for BrowserSettings {
 }
 
 impl BrowserSettings {
-    /// Resolves default browser profile ID for `tenant_id`, falling back to legacy global default on `'local-default'`.
-    pub fn get_default_profile_for(&self, tenant_id: &str) -> Option<&str> {
-        if let Some(id) = self.default_profiles.get(tenant_id) {
+    /// Resolves default browser profile ID for `workspace_id`, falling back to legacy global default on `'local-default'`.
+    pub fn get_default_profile_for(&self, workspace_id: &str) -> Option<&str> {
+        if let Some(id) = self.default_profiles.get(workspace_id) {
             return Some(id.as_str());
         }
-        if tenant_id == crate::infrastructure::db::DEFAULT_TENANT_ID {
+        if workspace_id == crate::infrastructure::db::DEFAULT_WORKSPACE_ID {
             return self.default_profile_id.as_deref();
         }
         None
     }
 
-    /// Sets or clears default browser profile ID for `tenant_id` while keeping `'local-default'` synced.
-    pub fn set_default_profile_for(&mut self, tenant_id: &str, profile_id: Option<String>) {
-        let tid = if tenant_id.trim().is_empty() {
-            crate::infrastructure::db::DEFAULT_TENANT_ID
+    /// Sets or clears default browser profile ID for `workspace_id` while keeping `'local-default'` synced.
+    pub fn set_default_profile_for(&mut self, workspace_id: &str, profile_id: Option<String>) {
+        let tid = if workspace_id.trim().is_empty() {
+            crate::infrastructure::db::DEFAULT_WORKSPACE_ID
         } else {
-            tenant_id.trim()
+            workspace_id.trim()
         };
         match profile_id {
             Some(ref id) => {
                 self.default_profiles.insert(tid.to_string(), id.clone());
-                if tid == crate::infrastructure::db::DEFAULT_TENANT_ID {
+                if tid == crate::infrastructure::db::DEFAULT_WORKSPACE_ID {
                     self.default_profile_id = Some(id.clone());
                 }
             }
             None => {
                 self.default_profiles.remove(tid);
-                if tid == crate::infrastructure::db::DEFAULT_TENANT_ID {
+                if tid == crate::infrastructure::db::DEFAULT_WORKSPACE_ID {
                     self.default_profile_id = None;
                 }
             }

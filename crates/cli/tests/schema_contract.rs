@@ -204,7 +204,7 @@ fn test_runtime_manifest_queries() {
 
 #[test]
 fn test_config_schemas_contract() {
-    let services = ["browser", "automation", "worker", "system"];
+    let services = ["browser", "automation", "daemon", "system"];
     for s in services {
         let path = std::path::Path::new("schema/config").join(format!("{}.schema.json", s));
         assert!(path.exists(), "Schema file {:?} must exist", path);

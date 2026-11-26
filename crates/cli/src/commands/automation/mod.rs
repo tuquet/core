@@ -90,7 +90,7 @@ pub async fn handle(command: AutomationSubcommands) -> Result<(), Box<dyn std::e
         },
         AutomationSubcommands::Inspect { workflow } => inspect_workflow(&workflow).await,
         AutomationSubcommands::Studio => open_studio(),
-        AutomationSubcommands::Probe => crate::commands::worker::print_probe_manifest(),
+        AutomationSubcommands::Probe => crate::commands::daemon::print_probe_manifest(),
         AutomationSubcommands::Config { edit, show, args } => manage_config(&args, edit, show),
     }
 }

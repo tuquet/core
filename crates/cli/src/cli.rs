@@ -42,7 +42,7 @@ pub enum Commands {
     },
 
     /// Local daemon service and execution node
-    #[command(name = "daemon", alias = "worker")]
+    #[command(name = "daemon")]
     Worker {
         #[command(subcommand)]
         command: Option<WorkerSubcommands>,
@@ -97,7 +97,7 @@ pub enum Commands {
     },
 
     /// Launch Operon Desktop or Web host shell Control Plane UI
-    #[command(name = "desk", aliases = ["desktop", "workstation"], hide = true)]
+    #[command(name = "desk", alias = "desktop", hide = true)]
     Desk(crate::commands::desk::DeskArgs),
 
     /// Open Web Control Plane UI in browser (auto-starts local daemon)
@@ -158,7 +158,7 @@ pub enum SecretSubcommands {
     /// List secrets stored in Cloud (names only)
     #[command(name = "remote", aliases = ["list-remote"])]
     Remote,
-    /// Rotate the tenant DEK (re-encrypts values, re-seals for all devices)
+    /// Rotate the workspace DEK (re-encrypts values, re-seals for all devices)
     #[command(name = "rotate")]
     Rotate,
     /// Print the Secret Store file path
@@ -307,7 +307,7 @@ pub enum InboxSubcommands {
     },
 
     /// Generate Cloudflare Email Routing Worker script for 1-click catch-all deployment
-    #[command(name = "setup-worker")]
+    #[command(name = "setup-daemon")]
     SetupWorker {
         /// Write generated script to target file path
         #[arg(short, long)]
@@ -466,7 +466,7 @@ pub enum FakerSubcommands {
 
 #[derive(Subcommand, Debug)]
 pub enum AutomationSubcommands {
-    /// Execute a workflow directly via browser worker
+    /// Execute a workflow directly via browser daemon
     Run {
         /// Path to workflow JSON file (.workflow.json)
         #[arg(value_name = "WORKFLOW_FILE")]
@@ -548,7 +548,7 @@ pub enum AutomationSubcommands {
 
 #[derive(Subcommand, Debug)]
 pub enum WorkerSubcommands {
-    /// Start the runner daemon and cloud worker
+    /// Start the runner daemon and cloud daemon
     #[command(name = "start")]
     Start {
         /// HTTP server listening host IP (e.g. 127.0.0.1, 0.0.0.0)
@@ -571,7 +571,7 @@ pub enum WorkerSubcommands {
         #[arg(short, long)]
         log_level: Option<String>,
 
-        /// Enable Autonomous Cloud Fleet Mesh worker mode
+        /// Enable Autonomous Cloud Fleet Mesh daemon mode
         #[arg(short = 'c', long)]
         cloud: bool,
 
@@ -580,8 +580,8 @@ pub enum WorkerSubcommands {
         claim: bool,
     },
 
-    /// Run as an autonomous cloud fleet worker polling and executing jobs
-    #[command(name = "worker")]
+    /// Run as an autonomous cloud fleet daemon polling and executing jobs
+    #[command(name = "daemon")]
     Worker {
         /// Target cloud profile ID or name to execute
         #[arg(long)]
@@ -669,7 +669,7 @@ pub enum WorkerSubcommands {
 
 #[derive(Subcommand, Debug)]
 pub enum CloudSubcommands {
-    /// Authenticate operator account, resolve multi-tenant workspace, and pair workstation
+    /// Authenticate operator account, resolve multi-workspace workspace, and pair desktop
     Login {
         /// Cloud / Supabase endpoint URL (e.g. https://dswhacsoaxgpfnkaxnhz.supabase.co)
         #[arg(short, long)]
@@ -697,9 +697,9 @@ pub enum CloudSubcommands {
 
         /// Pre-select target workspace by slug or ID
         #[arg(long)]
-        tenant: Option<String>,
+        workspace: Option<String>,
 
-        /// Custom workstation name (defaults to machine hostname)
+        /// Custom desktop name (defaults to machine hostname)
         #[arg(short, long)]
         name: Option<String>,
 
@@ -711,7 +711,7 @@ pub enum CloudSubcommands {
         format: crate::ui::FormatArgs,
     },
 
-    /// Log out and disconnect this workstation from Cloud
+    /// Log out and disconnect this desktop from Cloud
     Logout,
 
     /// Show current Cloud authentication and enrollment status
@@ -721,11 +721,11 @@ pub enum CloudSubcommands {
         format: crate::ui::FormatArgs,
     },
 
-    /// Manage accessible multi-tenant workspaces and active context
-    #[command(name = "tenant", aliases = ["workspace", "ws"])]
-    Tenant {
+    /// Manage workspaces and active context
+    #[command(name = "workspace", alias = "ws")]
+    Workspace {
         #[command(subcommand)]
-        command: Option<TenantSubcommands>,
+        command: Option<WorkspaceSubcommands>,
     },
 
     /// Display, inspect, or edit System & Cloud configuration (~/.operon/system/system.json)
@@ -746,15 +746,15 @@ pub enum CloudSubcommands {
 }
 
 #[derive(Subcommand, Debug, Clone)]
-pub enum TenantSubcommands {
-    /// List all accessible multi-tenant workspaces for the authenticated operator
+pub enum WorkspaceSubcommands {
+    /// List all accessible multi-workspace workspaces for the authenticated operator
     #[command(name = "list", aliases = ["ls"])]
     List {
         #[command(flatten)]
         format: crate::ui::FormatArgs,
     },
 
-    /// Switch active workspace context for this workstation
+    /// Switch active workspace context for this desktop
     #[command(name = "switch", aliases = ["use", "select"])]
     Switch {
         /// Target workspace slug or UUID (omit to select interactively)
@@ -1111,7 +1111,7 @@ pub enum ProfileCommands {
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum ProfileCloudSubcommands {
-    /// List all central cloud browser profiles in current tenant
+    /// List all central cloud browser profiles in current workspace
     #[command(name = "list", aliases = ["ls"])]
     List {
         /// Output result in raw JSON format
@@ -1384,14 +1384,14 @@ pub enum SetupComponent {
     #[command(name = "mcp")]
     Mcp,
 
-    /// Configure Specter Gateway VPS tunnel & verify SOCKS5 mesh proxy
+    /// Configure Operon Gateway VPS tunnel & verify SOCKS5 mesh proxy
     Gateway,
 
     /// Provision Antidetect Chromium browser sandbox
     #[command(name = "browser")]
     Browser,
 
-    /// Pair workstation with TQ Cloud (Supabase)
+    /// Pair desktop with TQ Cloud (Supabase)
     #[command(name = "cloud")]
     Cloud,
 }

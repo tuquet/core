@@ -1,6 +1,6 @@
 use crate::core::models::id::BrowserId;
 use crate::infrastructure::db::{
-    AutomationDb, CreateBrowserRecord, DEFAULT_TENANT_ID, FingerprintConfig,
+    AutomationDb, CreateBrowserRecord, DEFAULT_WORKSPACE_ID, FingerprintConfig,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -14,7 +14,7 @@ pub struct CsvBrowserProfile {
     pub proxy: Option<String>,
     pub group_name: Option<String>,
     pub tags: Vec<String>,
-    pub tenant_id: Option<String>,
+    pub workspace_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
@@ -117,7 +117,7 @@ pub fn parse_csv_profiles(csv_string: &str) -> Vec<CsvBrowserProfile> {
                     .collect()
             })
             .unwrap_or_default();
-        let tenant_id = non_empty_opt(parts.get(7));
+        let workspace_id = non_empty_opt(parts.get(7));
 
         profiles.push(CsvBrowserProfile {
             id,
@@ -127,22 +127,22 @@ pub fn parse_csv_profiles(csv_string: &str) -> Vec<CsvBrowserProfile> {
             proxy,
             group_name,
             tags,
-            tenant_id,
+            workspace_id,
         });
     }
     profiles
 }
 
 /// Batch import parsed browser profiles into SQLite database with row-level reporting.
-pub fn import_csv_into_db_with_tenant(
+pub fn import_csv_into_db_with_workspace(
     db: &AutomationDb,
     csv_string: &str,
-    default_tenant_id: Option<&str>,
+    default_workspace_id: Option<&str>,
 ) -> CsvImportReport {
-    let resolved_tenant = default_tenant_id
+    let resolved_workspace = default_workspace_id
         .map(str::trim)
         .filter(|s| !s.is_empty())
-        .unwrap_or(DEFAULT_TENANT_ID);
+        .unwrap_or(DEFAULT_WORKSPACE_ID);
 
     let mut imported = 0usize;
     let mut skipped = 0usize;
@@ -214,7 +214,8 @@ pub fn import_csv_into_db_with_tenant(
                     .collect()
             })
             .unwrap_or_default();
-        let tenant_id = non_empty_opt(parts.get(7)).unwrap_or_else(|| resolved_tenant.to_string());
+        let workspace_id =
+            non_empty_opt(parts.get(7)).unwrap_or_else(|| resolved_workspace.to_string());
 
         if let Ok(Some(_)) = db.browsers().get_browser(&final_id) {
             skipped += 1;
@@ -234,7 +235,7 @@ pub fn import_csv_into_db_with_tenant(
 
         match db.browsers().create_browser_record(&CreateBrowserRecord {
             id: &final_id,
-            tenant_id: &tenant_id,
+            workspace_id: &workspace_id,
             name: &name,
             group_name: group_name.as_deref(),
             tags: Some(&tags),
@@ -263,9 +264,9 @@ pub fn import_csv_into_db_with_tenant(
     }
 }
 
-/// Backward-compatible wrapper defaulting to `'local-default'` tenant.
+/// Backward-compatible wrapper defaulting to `'local-default'` workspace.
 pub fn import_csv_into_db(db: &AutomationDb, csv_string: &str) -> usize {
-    import_csv_into_db_with_tenant(db, csv_string, None).imported
+    import_csv_into_db_with_workspace(db, csv_string, None).imported
 }
 
 #[cfg(test)]
@@ -294,10 +295,10 @@ mod tests {
     }
 
     #[test]
-    fn test_import_csv_reports_errors_and_tenants() {
+    fn test_import_csv_reports_errors_and_workspaces() {
         let db = AutomationDb::new_in_memory().unwrap();
         let csv = "id,name,userAgent,timezone,proxy,group,tags\np_ok,Good Profile,,UTC,socks5://127.0.0.1:1080,marketing,vip|sea\n,Auto Id Profile,,UTC,,,\np_bad_name,,,UTC,,,\np_bad_proxy,Bad Proxy,,UTC,ftp://bad-proxy:21,,";
-        let report = import_csv_into_db_with_tenant(&db, csv, Some("tenant-custom"));
+        let report = import_csv_into_db_with_workspace(&db, csv, Some("workspace-custom"));
         assert_eq!(report.imported, 2);
         assert_eq!(report.skipped, 2);
         assert_eq!(report.errors.len(), 2);
@@ -306,7 +307,7 @@ mod tests {
 
         let items = db
             .browsers()
-            .list_browsers(Some("tenant-custom"), None, None, None)
+            .list_browsers(Some("workspace-custom"), None, None, None)
             .unwrap();
         assert_eq!(items.len(), 2);
     }

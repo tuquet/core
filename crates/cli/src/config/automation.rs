@@ -28,7 +28,7 @@ fn default_browser() -> String {
     crate::constants::DEFAULT_BROWSER_NAME.to_string()
 }
 fn default_studio_port() -> u16 {
-    crate::constants::DEFAULT_RUNNER_PORT
+    crate::constants::DEFAULT_DAEMON_PORT
 }
 fn default_true() -> bool {
     true

@@ -28,7 +28,7 @@ pub struct RawScoopManifest {
     pub hash: Option<String>,
 }
 
-/// Locates local Scoop bucket directory if available on workstation
+/// Locates local Scoop bucket directory if available on desktop
 pub fn find_local_bucket_dir() -> Option<PathBuf> {
     if let Ok(home) = std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")) {
         let home_path = PathBuf::from(home);
